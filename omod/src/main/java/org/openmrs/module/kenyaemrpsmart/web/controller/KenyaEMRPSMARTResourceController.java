@@ -16,16 +16,20 @@ package org.openmrs.module.kenyaemrpsmart.web.controller;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.MainResourceController;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import java.util.List;
+
 /**
  * The main controller.
  */
 @Controller
+@RequestMapping("/rest/" + RestConstants.VERSION_1 + "/psmart")
 public class KenyaEMRPSMARTResourceController extends MainResourceController {
 	
 	protected final Log log = LogFactory.getLog(getClass());
@@ -37,5 +41,22 @@ public class KenyaEMRPSMARTResourceController extends MainResourceController {
 	public String getNamespace() {
 		return "v1/kenyaemrpsmart";
 	}
+
+	@RequestMapping(value = "/authenticate", method = RequestMethod.POST)
+	public void authenticate(){
+
+	}
+
+	@RequestMapping(value = "/pushToEmr", method = RequestMethod.POST)
+	public void pushToEmr(){
+
+	}
+
+	@RequestMapping(value = "listEligible", method = RequestMethod.GET)
+	public List<?> listEligible(){
+		return null;
+	}
+
+
 
 }
