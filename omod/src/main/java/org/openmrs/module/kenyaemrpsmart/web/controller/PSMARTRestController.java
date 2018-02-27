@@ -27,13 +27,15 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.WebRequest;
 
+import java.util.List;
+
 /**
  * The main controller.
  */
 @Controller
 @RequestMapping(value = "/rest/" + RestConstants.VERSION_1 + "/smartcard")
 public class PSMARTRestController extends BaseRestController {
-	
+
 	protected final Log log = LogFactory.getLog(getClass());
 
 	@RequestMapping(method = RequestMethod.POST, value = "/receiveshr")

@@ -1,20 +1,20 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC
-    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
-    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
 
 <hibernate-mapping package="org.openmrs.module.kenyaemrpsmart">
 
-<!--
-	<class name="EndPoint"
-		table="${project.parent.artifactId}_EndPoint">
-		<id name="id" type="int" column="id" unsaved-value="0">
-			<generator class="native" />
-		</id>
-		<discriminator column="id" insert="false" />
-		<property name="uuid" type="java.lang.String" column="uuid"
-			length="38" unique="true" />
-	</class>
--->
+    <class name="org.openmrs.module.kenyaemrpsmart.PsmartStore">
+        <id name="id" type="int" column="id" unsaved-value="0">
+            <generator class="native" />
+        </id>
+        <property name="uuid" type="java.lang.String" column="uuid" length="38" unique="true" />
+        <property name="shr" type="java.lang.String" length="65535" column="shr" />
+        <property name="dateCreated" type="java.sql.Timestamp" column="date_created"/>
+        <property name="status" type="java.lang.String" column="status" />
+        <property name="statusDate" type="java.sql.Timestamp" column="status_date"/>
+        <property name="addendum" type="java.lang.String" length="65535" />
+    </class>
 
 </hibernate-mapping>

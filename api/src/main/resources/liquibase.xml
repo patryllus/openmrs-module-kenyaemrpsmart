@@ -8,5 +8,17 @@
         See http://www.liquibase.org/manual/home#available_database_refactorings
         for a list of supported elements and attributes
     -->
+
+    <changeSet id="${project.parent.artifactId}-20160511-1056" author="alaboso">
+        <createTable tableName="psmart_store">
+            <column name="id" type="int"></column>
+            <column name="uuid" type="varchar(38)" ></column>
+            <column name="shr" type="text"></column>
+            <column name="date_created" type="datetime"></column>
+            <column name="status" type="varchar(20)"></column>
+            <column name="status_date" type="datetime"></column>
+            <column name="addendum" type="text"></column>
+        </createTable>
+    </changeSet>
     
 </databaseChangeLog>
