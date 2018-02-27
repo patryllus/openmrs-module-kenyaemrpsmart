@@ -21,7 +21,7 @@ import org.openmrs.module.ModuleActivator;
 /**
  * This class contains the logic that is run every time this module is either started or stopped.
  */
-public class KenyaEMRP-SMARTActivator implements ModuleActivator {
+public class KenyaEMRPSMARTActivator implements ModuleActivator {
 	
 	protected Log log = LogFactory.getLog(getClass());
 		
