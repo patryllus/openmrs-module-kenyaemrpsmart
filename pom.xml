@@ -37,6 +37,9 @@
 		<!-- Module dependencies -->
 
 		<webservicesRestVersion>2.1</webservicesRestVersion>
+		<kenyaemrVersion>15.1.4</kenyaemrVersion>
+		<kenyacoreVersion>2.2</kenyacoreVersion>
+		<kenyauiVersion>2.0.3</kenyauiVersion>
 		<appframeworkVersion>2.2.1</appframeworkVersion>
 		<calculationVersion>1.0</calculationVersion>
 		<htmlformentryVersion>2.3</htmlformentryVersion>
@@ -95,6 +98,13 @@
 				<groupId>org.openmrs.module</groupId>
 				<artifactId>webservices.rest-omod-1.8</artifactId>
 				<version>${webservicesRestVersion}</version>
+				<scope>provided</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.openmrs.module</groupId>
+				<artifactId>kenyaemr-api</artifactId>
+				<version>${kenyaemrVersion}</version>
 				<scope>provided</scope>
 			</dependency>
 
