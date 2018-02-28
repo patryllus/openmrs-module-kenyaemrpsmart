@@ -16,32 +16,6 @@
 	<dependencies>
 
 		<!-- Begin OpenMRS modules -->
-
-	<!--	<dependency>
-			<groupId>org.openmrs.module</groupId>
-			<artifactId>appframework-api</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.openmrs.module</groupId>
-			<artifactId>calculation-api</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.openmrs.module</groupId>
-			<artifactId>htmlformentry-api</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.openmrs.module</groupId>
-			<artifactId>htmlwidgets-api</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.openmrs.module</groupId>
-			<artifactId>idgen-api</artifactId>
-		</dependency>
--->
 		<dependency>
 			<groupId>org.openmrs.module</groupId>
 			<artifactId>metadatadeploy-api</artifactId>
@@ -97,6 +71,23 @@
 
 		<!-- End OpenMRS core -->
 
+		<!-- begin external dependencies-->
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+		<!-- end of external dependencies-->
 	</dependencies>
 	
 	<build>

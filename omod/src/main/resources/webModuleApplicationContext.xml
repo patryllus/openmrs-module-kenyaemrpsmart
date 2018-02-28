@@ -28,5 +28,9 @@
 	
 	<context:component-scan base-package="org.openmrs.module.kenyaemrpsmart.web.controller" />
 
+	<bean class="org.openmrs.ui.framework.StandardModuleUiConfiguration">
+		<property name="moduleId" value="kenyaemrpsmart"/>
+	</bean>
+
 		
 </beans>
