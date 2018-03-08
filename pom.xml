@@ -41,15 +41,15 @@
 		<kenyacoreVersion>2.2</kenyacoreVersion>
 		<kenyauiVersion>2.0.3</kenyauiVersion>
 		<appframeworkVersion>2.2.1</appframeworkVersion>
+		<uiframeworkVersion>3.3.1</uiframeworkVersion>
 		<calculationVersion>1.0</calculationVersion>
-		<htmlformentryVersion>2.3</htmlformentryVersion>
+		<htmlformentryVersion>2.4</htmlformentryVersion>
 		<htmlwidgetsVersion>1.6.6</htmlwidgetsVersion>
 		<idgenVersion>2.6</idgenVersion>
 		<metadatadeployVersion>1.2</metadatadeployVersion>
 		<metadatasharingVersion>1.1.8</metadatasharingVersion>
 		<reportingVersion>0.9.8.1</reportingVersion>
 		<serializationxstreamVersion>0.2.7</serializationxstreamVersion>
-		<uiframeworkVersion>3.2.2</uiframeworkVersion>
 		<jacksonVersion>2.9.2</jacksonVersion>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -58,6 +58,7 @@
 		<dependencies>
 
 			<!-- Begin OpenMRS modules -->
+<!--
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
 				<artifactId>appframework-api</artifactId>
@@ -95,13 +96,6 @@
 
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
-				<artifactId>kenyaemr-api</artifactId>
-				<version>${kenyaemrVersion}</version>
-				<scope>provided</scope>
-			</dependency>
-
-			<dependency>
-				<groupId>org.openmrs.module</groupId>
 				<artifactId>kenyacore-api</artifactId>
 				<version>${kenyacoreVersion}</version>
 				<scope>provided</scope>
@@ -119,7 +113,7 @@
 				<artifactId>kenyaui-api</artifactId>
 				<version>${kenyauiVersion}</version>
 				<scope>provided</scope>
-			</dependency>
+			</dependency>-->
 
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
@@ -135,19 +129,20 @@
 				<scope>provided</scope>
 			</dependency>
 
-			<dependency>
+	<!--		<dependency>
 				<groupId>org.openmrs.module</groupId>
 				<artifactId>reporting-api</artifactId>
 				<version>${reportingVersion}</version>
 				<scope>provided</scope>
 			</dependency>
-
+-->
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
 				<artifactId>serialization.xstream-api</artifactId>
 				<version>${serializationxstreamVersion}</version>
 				<scope>provided</scope>
 			</dependency>
+<!--
 
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
@@ -155,6 +150,16 @@
 				<version>${uiframeworkVersion}</version>
 				<scope>provided</scope>
 			</dependency>
+
+			<dependency>
+				<groupId>org.openmrs.module</groupId>
+				<artifactId>kenyaemr-api</artifactId>
+				<version>${kenyaemrVersion}</version>
+				<scope>provided</scope>
+			</dependency>
+-->
+
+			<!-- End OpenMRS modules -->
 
 
 			<dependency>

@@ -13,22 +13,28 @@
  */
 package org.openmrs.module.kenyaemrpsmart.api;
 
-import static org.junit.Assert.*;
-
-import org.junit.Ignore;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
-import org.openmrs.api.context.Context;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.PatientSHR;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
+
+import static org.junit.Assert.assertNotNull;
 
 /**
  * Tests {@link {EndPointService}}.
  */
 
-public class  EndPointServiceTest extends BaseModuleContextSensitiveTest {
-	
-	@Test
-	public void shouldSetupContext() {
+public class PatientSHRTest extends BaseModuleContextSensitiveTest {
 
-		assertNotNull(Context.getService(EndPointService.class));
+	@Before
+	public void setup() throws Exception {
+		executeDataSet("dataset/test-dataset.xml");
+	}
+	@Test
+	public void shouldReturnPatientSHR() {
+
+		PatientSHR shr = new PatientSHR(100002);
+		Assert.assertNotNull(shr.patientIdentification());
 	}
 }
