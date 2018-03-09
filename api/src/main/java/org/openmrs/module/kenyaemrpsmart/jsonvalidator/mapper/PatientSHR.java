@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.JSONPObject;
+import org.openmrs.Concept;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.Person;
 import org.openmrs.PersonAddress;
+import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
 import org.openmrs.Relationship;
 import org.openmrs.RelationshipType;
@@ -18,6 +20,7 @@ import org.openmrs.api.ObsService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
 import java.text.SimpleDateFormat;
@@ -40,6 +43,8 @@ public class PatientSHR {
    private PatientService patientService;
    private ObsService obsService;
    private AdministrationService administrationService;
+   String TELEPHONE_CONTACT = "b2c38640-2603-4629-aebd-3b54f33f1e3a";
+   String CIVIL_STATUS_CONCEPT = "1054AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 
     public PatientSHR(Integer patientID) {
@@ -74,8 +79,43 @@ public class PatientSHR {
         return new SimpleDateFormat(pattern);
     }
 
+    private String getPatientPhoneNumber() {
+        PersonAttributeType phoneNumberAttrType = personService.getPersonAttributeTypeByUuid(TELEPHONE_CONTACT);
+        return patient.getAttribute(phoneNumberAttrType) != null ? patient.getAttribute(phoneNumberAttrType).getValue(): "";
+    }
+
+    private String getMaritalStatus() {
+        Obs maritalStatus = Utils.getLatestObs(this.patient, CIVIL_STATUS_CONCEPT);
+        String statusString = "";
+        if(maritalStatus != null) {
+            String MARRIED_MONOGAMOUS = "5555AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+            String MARRIED_POLYGAMOUS = "159715AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+            String DIVORCED = "1058AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+            String WIDOWED = "1059AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+            String LIVING_WITH_PARTNER = "1060AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+            String NEVER_MARRIED = "1057AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+            if(maritalStatus.getValueCoded().equals(MARRIED_MONOGAMOUS)) {
+                statusString = "Married Monogamous";
+            } else if(maritalStatus.getValueCoded().equals(MARRIED_POLYGAMOUS)) {
+                statusString = "Married Polygamous";
+            } else if (maritalStatus.getValueCoded().equals(DIVORCED)) {
+                statusString = "Divorced";
+            } else if(maritalStatus.getValueCoded().equals(WIDOWED)) {
+                statusString = "Widowed";
+            } else if (maritalStatus.getValueCoded().equals(LIVING_WITH_PARTNER)) {
+                statusString = "Living with Partner";
+            } else if (maritalStatus.getValueCoded().equals(NEVER_MARRIED)) {
+                statusString = "Single";
+            }
+
+        }
+
+        return statusString;
+    }
+
     private ObjectNode getPatientAddress() {
-        //String PHONE_CONTACT = CommonMetadata._PersonAttributeType.TELEPHONE_CONTACT;
+
         /**
          * county: personAddress.country
          * sub-county: personAddress.stateProvince
@@ -242,6 +282,8 @@ public class PatientSHR {
         identifiers.put("DEATH_DATE", deathDate);
         identifiers.put("DEATH_INDICATOR", deathIndicator);
         identifiers.put("PATIENT_ADDRESS", getPatientAddress());
+        identifiers.put("PHONE_NUMBER", getPatientPhoneNumber());
+        identifiers.put("MARITAL_STATUS", getMaritalStatus());
         identifiers.put("MOTHER_DETAILS", getMotherDetails());
         return identifiers;
    }
