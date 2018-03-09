@@ -1,11 +1,15 @@
 package org.openmrs.module.kenyaemrpsmart.kenyaemrUtils;
 
 import org.openmrs.Concept;
+import org.openmrs.Encounter;
+import org.openmrs.EncounterType;
+import org.openmrs.Form;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.api.context.Context;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class Utils {
@@ -35,6 +39,32 @@ public class Utils {
             return obs.get(0);
         }
         return null;
+    }
+
+    /**
+     * Finds the last encounter during the program enrollment with the given encounter type
+     *
+     * @param type the encounter type
+     *
+     * @return the encounter
+     */
+    public static Encounter lastEncounter(Patient patient, EncounterType type) {
+        List<Encounter> encounters = Context.getEncounterService().getEncounters(patient, null, null, null, null, Collections.singleton(type), null, null, null, false);
+        return encounters.size() > 0 ? encounters.get(encounters.size() - 1) : null;
+    }
+
+    /**
+     * getEncounters(Patient who, Location loc, Date fromDate, Date toDate,
+     Collection<Form> enteredViaForms, Collection<EncounterType> encounterTypes, Collection<Provider> providers,
+     Collection<VisitType> visitTypes, Collection<Visit> visits, boolean includeVoided);
+     * @return
+     */
+
+
+    public static List<Encounter> getEncounters (Patient patient, List<Form> forms) {
+
+        return Context.getEncounterService().getEncounters(patient, null, null, null, forms, null, null, null, null, false);
+
     }
 
 

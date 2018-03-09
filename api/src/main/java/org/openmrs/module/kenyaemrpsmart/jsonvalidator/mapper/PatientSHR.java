@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.JSONPObject;
+import org.openmrs.Cohort;
 import org.openmrs.Concept;
+import org.openmrs.Encounter;
+import org.openmrs.Form;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
@@ -84,6 +87,17 @@ public class PatientSHR {
         return patient.getAttribute(phoneNumberAttrType) != null ? patient.getAttribute(phoneNumberAttrType).getValue(): "";
     }
 
+    private ObjectNode getHivTests() {
+        String HTS_INITIAL_TEST_FORM_UUID = "402dc5d7-46da-42d4-b2be-f43ea4ad87b0";
+        String HTS_CONFIRMATORY_TEST_FORM_UUID = "b08471f6-0892-4bf7-ab2b-bf79797b8ea4";
+
+        Form HTS_INITIAL_FORM = Context.getFormService().getFormByUuid(HTS_INITIAL_TEST_FORM_UUID);
+        Form HTS_CONFIRMATORY_FORM = Context.getFormService().getFormByUuid(HTS_CONFIRMATORY_TEST_FORM_UUID);
+
+        List<Encounter> htsEncounters = Utils.getEncounters(patient, Arrays.asList(HTS_CONFIRMATORY_FORM, HTS_INITIAL_FORM));
+
+        return null;
+    }
     private String getMaritalStatus() {
         Obs maritalStatus = Utils.getLatestObs(this.patient, CIVIL_STATUS_CONCEPT);
         String statusString = "";
@@ -309,9 +323,7 @@ public class PatientSHR {
         Map<String, String> patientIdentifiers = new HashMap<String, String>();
         String facilityMFL = getFacilityMFL();
         JsonNodeFactory factory = getJsonNodeFactory();
-        ObjectNode identifiers = factory.objectNode();
         ArrayNode internalIdentifiers = factory.arrayNode();
-        ObjectNode externalIdentifiers = factory.objectNode();
 
         for (PatientIdentifier identifier: identifierList) {
             PatientIdentifierType identifierType = identifier.getIdentifierType();
