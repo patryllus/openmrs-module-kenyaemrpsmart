@@ -18,7 +18,9 @@ import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
 import org.openmrs.Relationship;
 import org.openmrs.RelationshipType;
+import org.openmrs.User;
 import org.openmrs.api.AdministrationService;
+import org.openmrs.api.ConceptService;
 import org.openmrs.api.ObsService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.PersonService;
@@ -28,6 +30,7 @@ import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +48,7 @@ public class PatientSHR {
    private PersonService personService;
    private PatientService patientService;
    private ObsService obsService;
+   private ConceptService conceptService;
    private AdministrationService administrationService;
    String TELEPHONE_CONTACT = "b2c38640-2603-4629-aebd-3b54f33f1e3a";
    String CIVIL_STATUS_CONCEPT = "1054AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -58,6 +62,7 @@ public class PatientSHR {
 
         this.obsService = Context.getObsService();
         this.administrationService = Context.getAdministrationService();
+        this.conceptService = Context.getConceptService();
     }
 
     private JsonNodeFactory getJsonNodeFactory () {
@@ -87,7 +92,14 @@ public class PatientSHR {
         return patient.getAttribute(phoneNumberAttrType) != null ? patient.getAttribute(phoneNumberAttrType).getValue(): "";
     }
 
-    private ObjectNode getHivTests() {
+    private ArrayNode getHivTests() {
+
+        // test concepts
+        Concept finalHivTestResultConcept = conceptService.getConcept(159427);
+        Concept	testTypeConcept = conceptService.getConcept(162084);
+        Concept testStrategyConcept = conceptService.getConcept(164956);
+
+
         String HTS_INITIAL_TEST_FORM_UUID = "402dc5d7-46da-42d4-b2be-f43ea4ad87b0";
         String HTS_CONFIRMATORY_TEST_FORM_UUID = "b08471f6-0892-4bf7-ab2b-bf79797b8ea4";
 
@@ -95,8 +107,14 @@ public class PatientSHR {
         Form HTS_CONFIRMATORY_FORM = Context.getFormService().getFormByUuid(HTS_CONFIRMATORY_TEST_FORM_UUID);
 
         List<Encounter> htsEncounters = Utils.getEncounters(patient, Arrays.asList(HTS_CONFIRMATORY_FORM, HTS_INITIAL_FORM));
+        ArrayNode testList = getJsonNodeFactory().arrayNode();
+        // loop through encounters and extract hiv test information
+        for(Encounter encounter : htsEncounters) {
+            List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept));
+            testList.add(extractHivTestInformation(obs));
+        }
 
-        return null;
+        return testList;
     }
     private String getMaritalStatus() {
         Obs maritalStatus = Utils.getLatestObs(this.patient, CIVIL_STATUS_CONCEPT);
@@ -299,6 +317,7 @@ public class PatientSHR {
         identifiers.put("PHONE_NUMBER", getPatientPhoneNumber());
         identifiers.put("MARITAL_STATUS", getMaritalStatus());
         identifiers.put("MOTHER_DETAILS", getMotherDetails());
+        identifiers.put("HIV_TEST", getHivTests());
         return identifiers;
    }
 
@@ -478,6 +497,91 @@ public class PatientSHR {
 
     public void setPatientID(int patientID) {
         this.patientID = patientID;
+    }
+
+    private ObjectNode extractHivTestInformation (List<Obs> obsList) {
+        /**
+         * "HIV_TEST": [
+         {
+         "DATE": "20180101",
+         "RESULT": "POSITIVE/NEGATIVE/INCONCLUSIVE",
+         "TYPE": "SCREENING/CONFIRMATORY",
+         "FACILITY": "10829",
+         "STRATEGY": "HP/NP/VI/VS/HB/MO/O", {164956: PITC(164163), Non PITC(164953), Integrated VCT(164954), Standalone vct(164955), Home Based testing(159938), Mobile outreach(159939)}
+         "PROVIDER_DETAILS": {
+         "NAME": "MATTHEW NJOROGE, MD",
+         "ID": "12345-67890-abcde"
+         }
+         }
+         ]
+         */
+
+        Integer finalHivTestResultConcept = 159427;
+        Integer	testTypeConcept = 162084;
+        Integer testStrategyConcept = 164956;
+
+        Date testDate= obsList.get(0).getObsDatetime();
+        User provider = obsList.get(0).getCreator();
+        String testResult = "";
+        String testType = "";
+        Integer testFacility = 1089;
+        String testStrategy = "";
+        ObjectNode testNode = getJsonNodeFactory().objectNode();
+
+        for(Obs obs:obsList) {
+
+            if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept) ) {
+                testResult = hivStatusConverter(obs.getValueCoded());
+            } else if (obs.getConcept().getConceptId().equals(testTypeConcept )) {
+                testType = testTypeConverter(obs.getValueCoded());
+            } else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
+                testStrategy = testStrategyConverter(obs.getValueCoded());
+            }
+        }
+        testNode.put("DATE", getSimpleDateFormat(getSHRDateFormat()).format(testDate));
+        testNode.put("RESULT", testResult);
+        testNode.put("TYPE", testType);
+        testNode.put("STRATEGY", testStrategy);
+        testNode.put("FACILITY", testFacility);
+        testNode.put("PROVIDER_DETAILS", getProviderDetails(provider));
+
+        return testNode;
+
+    }
+
+    String testStrategyConverter (Concept key) {
+        Map<Concept, String> hivTestStrategyList = new HashMap<Concept, String>();
+        hivTestStrategyList.put(conceptService.getConcept(164163), "Provider Initiated Testing(PITC)");
+        hivTestStrategyList.put(conceptService.getConcept(164953), "Non Provider Initiated Testing");
+        hivTestStrategyList.put(conceptService.getConcept(164954), "Integrated VCT Center");
+        hivTestStrategyList.put(conceptService.getConcept(164955), "Stand Alone VCT Center");
+        hivTestStrategyList.put(conceptService.getConcept(159938), "Home Based Testing");
+        hivTestStrategyList.put(conceptService.getConcept(159939), "Mobile Outreach HTS");
+        return hivTestStrategyList.get(key);
+    }
+
+    String testTypeConverter (Concept key) {
+        Map<Concept, String> testTypeList = new HashMap<Concept, String>();
+        testTypeList.put(conceptService.getConcept(162080), "Initial");
+        testTypeList.put(conceptService.getConcept(162082), "Confirmation");
+        return testTypeList.get(key);
+
+    }
+
+    String hivStatusConverter (Concept key) {
+        Map<Concept, String> hivStatusList = new HashMap<Concept, String>();
+        hivStatusList.put(conceptService.getConcept(703), "Positive");
+        hivStatusList.put(conceptService.getConcept(664), "Negative");
+        hivStatusList.put(conceptService.getConcept(1138), "Inconclusive");
+        return hivStatusList.get(key);
+    }
+
+    private ObjectNode getProviderDetails(User user) {
+
+        ObjectNode providerNameNode = getJsonNodeFactory().objectNode();
+        providerNameNode.put("NAME", user.getPersonName().getFullName());
+        providerNameNode.put("ID", user.getSystemId());;
+        return providerNameNode;
     }
 
 

@@ -6,9 +6,11 @@ import org.openmrs.EncounterType;
 import org.openmrs.Form;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
+import org.openmrs.Person;
 import org.openmrs.api.context.Context;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -65,6 +67,15 @@ public class Utils {
 
         return Context.getEncounterService().getEncounters(patient, null, null, null, forms, null, null, null, null, false);
 
+    }
+
+    public static List<Obs> getEncounterObservationsForQuestions(Person patient, Encounter encounter, List<Concept> questions) {
+        /**
+         * getObservations(List<Person> whom, List<Encounter> encounters, List<Concept> questions,
+         List<Concept> answers, List<PERSON_TYPE> personTypes, List<Location> locations, List<String> sort,
+         Integer mostRecentN, Integer obsGroupId, Date fromDate, Date toDate, boolean includeVoidedObs)
+         */
+        return Context.getObsService().getObservations(Arrays.asList(patient), Arrays.asList(encounter), questions, null, null, null, null, null, null, null, null, false);
     }
 
 
