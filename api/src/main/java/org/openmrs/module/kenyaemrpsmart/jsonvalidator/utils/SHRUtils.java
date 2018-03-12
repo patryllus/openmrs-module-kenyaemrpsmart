@@ -7,6 +7,7 @@ package org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SHR;
 
@@ -20,6 +21,8 @@ public class SHRUtils {
 
     public static SHR getSHR(String SHRStr) {
         ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
         SHR shr = null;
         try {
             shr = mapper.readValue(SHRStr, new TypeReference<SHR>() {

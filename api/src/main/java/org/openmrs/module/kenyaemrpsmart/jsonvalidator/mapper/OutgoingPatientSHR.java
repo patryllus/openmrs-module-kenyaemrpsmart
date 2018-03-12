@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class PatientSHR {
+public class OutgoingPatientSHR {
    /* public SHR.PATIENT_IDENTIFICATION pATIENT_IDENTIFICATION;
     public SHR.NEXT_OF_KIN nEXT_OF_KIN[];
     public SHR.HIV_TEST hIV_TEST[];
@@ -58,7 +58,7 @@ public class PatientSHR {
    String IMMUNIZATION_FORM_UUID = "b4f3859e-861c-4a63-bdff-eb7392030d47";
 
 
-    public PatientSHR(Integer patientID) {
+    public OutgoingPatientSHR(Integer patientID) {
         this.patientID = patientID;
         this.patientService = Context.getPatientService();
         this.patient = patientService.getPatient(patientID);
@@ -285,8 +285,8 @@ public class PatientSHR {
             ObjectNode element = factory.objectNode();
             patientIdentifiers.put("ANC_NUMBER", ancNumber.getValueText());
             element.put("ID", ancNumber.getValueText());
-            element.put("IDENTIFIER_TYPE", "GODS_NUMBER");
-            element.put("ASSIGNING_AUTHORITY", "MPI");
+            element.put("IDENTIFIER_TYPE", "ANC_NUMBER");
+            element.put("ASSIGNING_AUTHORITY", "ANC");
             element.put("ASSIGNING_FACILITY", facilityMFL);
             internalIdentifiers.add(element);
         }

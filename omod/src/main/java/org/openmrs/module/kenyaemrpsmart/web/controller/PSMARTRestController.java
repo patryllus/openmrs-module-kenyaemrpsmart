@@ -16,19 +16,15 @@ package org.openmrs.module.kenyaemrpsmart.web.controller;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.PatientSHR;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
-import org.openmrs.module.webservices.rest.web.v1_0.controller.MainResourceController;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.WebRequest;
-
-import java.util.List;
 
 /**
  * The main controller.
@@ -44,7 +40,7 @@ public class PSMARTRestController extends BaseRestController {
 	public Object receiveSHR(WebRequest request) {
 		int patientID = request.getParameter("patientID") != null? Integer.parseInt(request.getParameter("patientID")): 0;
 		if (patientID != 0) {
-			PatientSHR shr = new PatientSHR(patientID);
+			OutgoingPatientSHR shr = new OutgoingPatientSHR(patientID);
 			return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("identification", shr.patientIdentification().toString());
 
 		}
