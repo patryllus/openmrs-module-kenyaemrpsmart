@@ -16,6 +16,7 @@ package org.openmrs.module.kenyaemrpsmart.web.controller;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.PatientSHR;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
@@ -41,8 +42,13 @@ public class PSMARTRestController extends BaseRestController {
 	@RequestMapping(method = RequestMethod.POST, value = "/receiveshr")
 	@ResponseBody
 	public Object receiveSHR(WebRequest request) {
+		int patientID = request.getParameter("patientID") != null? Integer.parseInt(request.getParameter("patientID")): 0;
+		if (patientID != 0) {
+			PatientSHR shr = new PatientSHR(patientID);
+			return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("identification", shr.patientIdentification().toString());
 
-		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated());
+		}
+		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("identification", "No patient id specified in the request: Got this: => " + request.getParameter("patientID"));
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/prepareshr")
