@@ -324,6 +324,7 @@ public class PatientSHR {
         identifiers.put("MOTHER_DETAILS", getMotherDetails());
         identifiers.put("HIV_TEST", getHivTests());
         identifiers.put("IMMUNIZATION", extractImmunizationInformation());
+        identifiers.put("NEXT_OF_KIN", getJsonNodeFactory().arrayNode());
         return identifiers;
    }
 
