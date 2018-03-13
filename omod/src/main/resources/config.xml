@@ -16,6 +16,7 @@
 	<require_modules>
 		<require_module version="2.1">org.openmrs.module.webservices.rest</require_module>
 		<require_module version="${kenyaemrVersion}">org.openmrs.module.kenyaemr</require_module>
+		<require_module version="${idgenVersion}">org.openmrs.module.idgen</require_module>
 	</require_modules>
 	<!-- / Module Properties -->
 

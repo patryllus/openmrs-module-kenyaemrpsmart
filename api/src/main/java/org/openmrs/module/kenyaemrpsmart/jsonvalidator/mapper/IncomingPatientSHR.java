@@ -24,7 +24,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 public class IncomingPatientSHR {
 
@@ -108,9 +110,9 @@ public class IncomingPatientSHR {
         PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
         PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
 
-        PatientIdentifier openMRSID = generateOpenMRSID();
+        /*PatientIdentifier openMRSID = generateOpenMRSID();
         openMRSID.setPreferred(true);
-        identifierSet.add(openMRSID);
+        identifierSet.add(openMRSID);*/
         // extract GOD's Number
         String shrGodsNumber =SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
         if (shrGodsNumber != null) {
@@ -133,12 +135,14 @@ public class IncomingPatientSHR {
             String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iD;
 
             if (idType.equals("ANC_NUMBER")) {
+               // first save patient
+               /* patientService.savePatient(this.patient);
                 Obs ancNumberObs = new Obs();
                 ancNumberObs.setConcept(conceptService.getConceptByUuid(ANC_NUMBER));
                 ancNumberObs.setValueText(identifier);
                 ancNumberObs.setPerson(this.patient);
                 ancNumberObs.setObsDatetime(new Date());
-                obsService.saveObs(ancNumberObs, null);
+                obsService.saveObs(ancNumberObs, null);*/
 
             } else {
                 if (idType.equals("HEI_NUMBER")) {
@@ -156,6 +160,9 @@ public class IncomingPatientSHR {
                 String assigningFacility = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].aSSIGNING_FACILITY;
                 patientIdentifier.setIdentifierType(identifierType);
                 patientIdentifier.setIdentifier(identifier);
+                if (x ==0) {
+                    patientIdentifier.setPreferred(true);
+                }
                 identifierSet.add(patientIdentifier);
             }
 
@@ -167,7 +174,41 @@ public class IncomingPatientSHR {
         }
 
     }
+/*
+    private Patient createTestPatient() {
+        Patient patient = new Patient();
+        PersonName pName = new PersonName();
+        pName.setGivenName("Tom");
+        pName.setMiddleName("E.");
+        pName.setFamilyName("Patient");
+        patient.addName(pName);
+        PersonAddress pAddress = new PersonAddress();
+        pAddress.setAddress1("123 My street");
+        pAddress.setAddress2("Apt 402");
+        pAddress.setCityVillage("Anywhere city");
+        pAddress.setCountry("Some Country");
+        Set<PersonAddress> pAddressList = patient.getAddresses();
+        pAddressList.add(pAddress);
+        patient.setAddresses(pAddressList);
+        patient.addAddress(pAddress);
+        patient.setDeathDate(new Date());
+        patient.setBirthdate(new Date());
+        patient.setBirthdateEstimated(true);
+        patient.setGender("male");
+        List<PatientIdentifierType> patientIdTypes = ps.getAllPatientIdentifierTypes();
+        assertNotNull(patientIdTypes);
+        PatientIdentifier patientIdentifier = new PatientIdentifier();
+        patientIdentifier.setIdentifier("123-0");
+        patientIdentifier.setIdentifierType(patientIdTypes.get(0));
+        patientIdentifier.setLocation(new Location(1));
+        patientIdentifier.setPreferred(true);
+        Set<PatientIdentifier> patientIdentifiers = new TreeSet<PatientIdentifier>();
+        patientIdentifiers.add(patientIdentifier);
+        patient.setIdentifiers(patientIdentifiers);
 
+        ps.savePatient(patient);
+        return patient;
+    }*/
     private void savePersonAttributes () {
         String tELEPHONE= SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pHONE_NUMBER;
         PersonAttributeType phoneNumberAttrType = personService.getPersonAttributeTypeByUuid(TELEPHONE_CONTACT);
@@ -264,4 +305,6 @@ public class IncomingPatientSHR {
         PatientIdentifier identifier = new PatientIdentifier(generated, openmrsIDType, location);
         return identifier;
     }
+
+
 }
