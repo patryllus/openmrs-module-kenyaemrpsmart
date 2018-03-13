@@ -11,57 +11,31 @@
  *
  * Copyright (C) OpenMRS, LLC.  All Rights Reserved.
  */
-package org.openmrs.module.kenyaemrpsmart.web.controller;
+package org.openmrs.module.kenyaemrpsmart.api;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.openmrs.api.context.Context;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.IncomingPatientSHR;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR;
-import org.openmrs.module.webservices.rest.SimpleObject;
-import org.openmrs.module.webservices.rest.web.RestConstants;
-import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.context.request.WebRequest;
+import org.openmrs.test.BaseModuleContextSensitiveTest;
 
 /**
- * The main controller.
+ * Tests {@link {EndPointService}}.
  */
-@Controller
-@RequestMapping(value = "/rest/" + RestConstants.VERSION_1 + "/smartcard")
-public class PSMARTRestController extends BaseRestController {
 
-	protected final Log log = LogFactory.getLog(getClass());
+public class IncomingPatientSHRTest extends BaseModuleContextSensitiveTest {
 
-	@RequestMapping(method = RequestMethod.POST, value = "/receiveshr")
-	@ResponseBody
-	public Object receiveSHR(WebRequest request) {
-		int patientID = request.getParameter("patientID") != null? Integer.parseInt(request.getParameter("patientID")): 0;
-		if (patientID != 0) {
-			OutgoingPatientSHR shr = new OutgoingPatientSHR(patientID);
-			return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("identification", shr.patientIdentification().toString());
-
-		}
-		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("identification", "No patient id specified in the request: Got this: => " + request.getParameter("patientID"));
+	@Before
+	public void setup() throws Exception {
+		executeDataSet("dataset/test-dataset.xml");
 	}
+	@Test
+	public void shouldReturnPatientSHR() {
 
-	@RequestMapping(method = RequestMethod.POST, value = "/prepareshr")
-	@ResponseBody
-	public Object prepareSHR(WebRequest request) {
 		IncomingPatientSHR shr = new IncomingPatientSHR(getIncomingSHRSample());
-		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("patient", shr.processIncomingSHR());
-	}
-
-	/**
-	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
-	 */
-
-	@Override
-	public String getNamespace() {
-		return "v1/kenyaemrpsmart";
+		Assert.assertNotNull(shr.processIncomingSHR());
 	}
 
 	private String getIncomingSHRSample () {
@@ -204,5 +178,4 @@ public class PSMARTRestController extends BaseRestController {
 				"  }\n" +
 				"}";
 	}
-
 }
