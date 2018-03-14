@@ -18,6 +18,7 @@ import org.apache.commons.logging.LogFactory;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.IncomingPatientSHR;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SmartCardEligibleList;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
@@ -55,6 +56,12 @@ public class PSMARTRestController extends BaseRestController {
 		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("patient", shr.processIncomingSHR());
 	}
 
+	@RequestMapping(method = RequestMethod.GET, value = "/getsmartcardeligiblelist")
+	@ResponseBody
+	public Object prepareEligibleList(WebRequest request) {
+		SmartCardEligibleList list = new SmartCardEligibleList();
+		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("eligibleList", list.getEligibleList().toString());
+	}
 	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
 	 */

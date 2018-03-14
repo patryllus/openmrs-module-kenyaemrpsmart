@@ -56,6 +56,8 @@ public class OutgoingPatientSHR {
    String TELEPHONE_CONTACT = "b2c38640-2603-4629-aebd-3b54f33f1e3a";
    String CIVIL_STATUS_CONCEPT = "1054AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
    String IMMUNIZATION_FORM_UUID = "b4f3859e-861c-4a63-bdff-eb7392030d47";
+    String HTS_INITIAL_TEST_FORM_UUID = "402dc5d7-46da-42d4-b2be-f43ea4ad87b0";
+    String HTS_CONFIRMATORY_TEST_FORM_UUID = "b08471f6-0892-4bf7-ab2b-bf79797b8ea4";
 
 
     public OutgoingPatientSHR(Integer patientID) {
@@ -105,8 +107,7 @@ public class OutgoingPatientSHR {
         Concept testStrategyConcept = conceptService.getConcept(164956);
 
 
-        String HTS_INITIAL_TEST_FORM_UUID = "402dc5d7-46da-42d4-b2be-f43ea4ad87b0";
-        String HTS_CONFIRMATORY_TEST_FORM_UUID = "b08471f6-0892-4bf7-ab2b-bf79797b8ea4";
+
 
         Form HTS_INITIAL_FORM = Context.getFormService().getFormByUuid(HTS_INITIAL_TEST_FORM_UUID);
         Form HTS_CONFIRMATORY_FORM = Context.getFormService().getFormByUuid(HTS_CONFIRMATORY_TEST_FORM_UUID);
@@ -661,30 +662,6 @@ public class OutgoingPatientSHR {
         }
 
         return node;
-
-
-
-        /**
-         * "BCG/OPV_AT_BIRTH/OPV1/OPV2/OPV3/PCV10-1/PCV10-2/PCV10-3/PENTA1/PENTA2/PENTA3/MEASLES6/MEASLES9/MEASLES18/ROTA1/ROTA2",
-         * <render vaccineConceptId="886AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="BCG" vaccineSequenceNo="1" id="bcg" class="bcg"/>
-         <render vaccineConceptId="783AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="OPV at Birth" vaccineSequenceNo="0" id="opv-birth" class="opv"/>
-         <render vaccineConceptId="783AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="OPV 1" vaccineSequenceNo="1" id="opv-1" class="opv"/>
-         <render vaccineConceptId="783AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="OPV 2" vaccineSequenceNo="2" id="opv-2" class="opv"/>
-         <render vaccineConceptId="783AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="OPV 3" vaccineSequenceNo="3" id="opv-3" class="opv"/>
-         <render vaccineConceptId="1422AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="IPV" vaccineSequenceNo="1" id="ipv" class="ipv"/>
-         <render vaccineConceptId="781AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="DPT/Hep B/Hib 1" vaccineSequenceNo="1" id="dpt-hepb-hib-1" class="dpt-hepb-hib" />
-         <render vaccineConceptId="781AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="DPT/Hep B/Hib 2" vaccineSequenceNo="2" id="dpt-hepb-hib-2" class="dpt-hepb-hib" />
-         <render vaccineConceptId="781AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="DPT/Hep B/Hib 3" vaccineSequenceNo="3" id="dpt-hepb-hib-3" class="dpt-hepb-hib" />
-         <render vaccineConceptId="162342AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="PCV 10 (Pneumococcal) 1" vaccineSequenceNo="1" id="pcv10-1" class="pcv" />
-         <render vaccineConceptId="162342AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="PCV 10 (Pneumococcal) 2" vaccineSequenceNo="2" id="pcv10-2" class="pcv" />
-         <render vaccineConceptId="162342AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="PCV 10 (Pneumococcal)3" vaccineSequenceNo="3" id="pcv10-3" class="pcv" />
-         <render vaccineConceptId="83531AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="ROTA 1" vaccineSequenceNo="1" id="rota-1" class="rota" />
-         <render vaccineConceptId="162586AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="Measles/Rubella 1" vaccineSequenceNo="1" id="measles-rubella-1" class="measles-rubella" />
-         <render vaccineConceptId="5864AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="Yellow Fever" vaccineSequenceNo="1" id="yellow-fever" class="yellow-fever" />
-         <render vaccineConceptId="162586AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="Measles/Rubella 2" vaccineSequenceNo="2" id="measles-rubella-2" class="measles-rubella"/>
-         <render vaccineConceptId="36AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="Measles at 6 months" vaccineSequenceNo="1" id="measles-6-months" class="measles-6-months"/>
-         <render vaccineConceptId="83531AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" vaccineLabel="ROTA 2" vaccineSequenceNo="2" id="rota-2" class="rota" />
-         */
     }
 
     String testTypeConverter (Concept key) {
@@ -810,6 +787,8 @@ public class OutgoingPatientSHR {
         public void setVaccineDate(Date vaccineDate) {
             this.vaccineDate = vaccineDate;
         }
+
+
     }
 
 
