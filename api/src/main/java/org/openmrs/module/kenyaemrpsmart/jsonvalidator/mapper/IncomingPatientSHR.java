@@ -280,10 +280,32 @@ public class IncomingPatientSHR {
 
     private void saveHivTestData () {
 
+        for (int i = 0; i<SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length;i++){
+
+            String dateStr = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].dATE;
+            String result = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].rESULT;
+            String type = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].tYPE;
+            String facility = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].fACILITY;
+            String strategy = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].sTRATEGY;
+            String providerDetails = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].pROVIDER_DETAILS.nAME;
+            Date date = null;
+            try{
+                date = new SimpleDateFormat("yyyyMMdd").parse(dateStr);
+            }
+            catch(ParseException ex){
+
+                ex.printStackTrace();
+            }
+
+        }
     }
 
     private void saveImmunization () {
+        for (int i = 0; i< SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length;i++){
 
+            String name = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].nAME;
+            String dateAministered = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].dATE_ADMINISTERED;
+        }
     }
 
     private void saveObsData () {
