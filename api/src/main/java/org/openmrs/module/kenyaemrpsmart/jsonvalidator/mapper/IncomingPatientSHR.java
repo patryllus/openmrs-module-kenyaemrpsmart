@@ -25,9 +25,11 @@ import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -45,7 +47,7 @@ public class IncomingPatientSHR {
 
     String TELEPHONE_CONTACT = "b2c38640-2603-4629-aebd-3b54f33f1e3a";
     String CIVIL_STATUS_CONCEPT = "1054AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    String IMMUNIZATION_FORM_UUID = "b4f3859e-861c-4a63-bdff-eb7392030d47";
+    String PSMART_ENCOUNTER_TYPE_UUID = "9bc15e94-2794-11e8-b467-0ed5f89f718b";
 
     public IncomingPatientSHR(String shr) {
 
@@ -56,6 +58,17 @@ public class IncomingPatientSHR {
         this.conceptService = Context.getConceptService();
         this.encounterService = Context.getEncounterService();
         this.incomingSHR = shr;
+    }
+
+    public IncomingPatientSHR(Integer patientID) {
+
+        this.patientService = Context.getPatientService();
+        this.personService = Context.getPersonService();
+        this.obsService = Context.getObsService();
+        this.administrationService = Context.getAdministrationService();
+        this.conceptService = Context.getConceptService();
+        this.encounterService = Context.getEncounterService();
+        this.patient = patientService.getPatient(patientID);
     }
 
     public String processIncomingSHR() {
@@ -80,6 +93,42 @@ public class IncomingPatientSHR {
         }
 
         return msg;
+    }
+
+    public String assignCardSerialIdentifier(String identifier, String encryptedSHR) {
+        PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
+
+        if(identifier != null) {
+
+            // check if no other patient has same identifier
+            List<Patient> patientsAssignedId = patientService.getPatients(null, identifier.trim(), Arrays.asList(SMART_CARD_SERIAL_NUMBER_TYPE), false);
+            if(patientsAssignedId.size() > 0) {
+                return "Identifier already assigned";
+            }
+
+            // check if patient already has the identifier
+            List<PatientIdentifier> existingIdentifiers = patient.getPatientIdentifiers(SMART_CARD_SERIAL_NUMBER_TYPE);
+
+            boolean found = false;
+            for(PatientIdentifier id : existingIdentifiers) {
+                if (id.getIdentifier().equals(identifier.trim())) {
+                    found = true;
+                    return "Client already assigned the card serial";
+                }
+            }
+
+
+            if(!found) {
+                PatientIdentifier patientIdentifier = new PatientIdentifier();
+                patientIdentifier.setIdentifierType(SMART_CARD_SERIAL_NUMBER_TYPE);
+                patientIdentifier.setLocation(Utils.getDefaultLocation());
+                patientIdentifier.setIdentifier(identifier.trim());
+                patient.addIdentifier(patientIdentifier);
+                patientService.savePatient(patient);
+                return "Card Serial successfully assigned";
+            }
+        }
+        return "No identifier provided";
     }
 
     private void createOrUpdatePatient () {
@@ -314,11 +363,11 @@ public class IncomingPatientSHR {
             Encounter enc = new Encounter();
             Location location = Context.getLocationService().getLocation(1);
             enc.setLocation(location);
-            enc.setEncounterType(Context.getEncounterService().getEncounterType(1));
+            enc.setEncounterType(Context.getEncounterService().getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA));
             enc.setEncounterDatetime(date);
             enc.setPatient(patient);
             enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
-
+            enc.setForm(Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_HIV_TEST));
 
 
             // build observations
@@ -399,10 +448,11 @@ public class IncomingPatientSHR {
             Encounter enc = new Encounter();
             Location location = Context.getLocationService().getLocation(1);
             enc.setLocation(location);
-            enc.setEncounterType(Context.getEncounterService().getEncounterType(1));
+            enc.setEncounterType(Context.getEncounterService().getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA));
             enc.setEncounterDatetime(date);
             enc.setPatient(patient);
             enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
+            enc.setForm(Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_IMMUNIZATION));
 
         }
     }
@@ -420,16 +470,6 @@ public class IncomingPatientSHR {
      */
     private PatientIdentifier generateOpenMRSID() {
         PatientIdentifierType openmrsIDType = Context.getPatientService().getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
-
-/*        String locationIdString = "1";//JsonUtils.readAsString(payload, "$['encounter']['encounter.location_id']");
-        Location location = null;
-        int locationId;
-
-        if(locationIdString != null){
-            locationId = Integer.parseInt(locationIdString);
-            location = Context.getLocationService().getLocation(locationId);
-        }*/
-
         String generated = Context.getService(IdentifierSourceService.class).generateIdentifier(openmrsIDType, "Registration");
         PatientIdentifier identifier = new PatientIdentifier(generated, openmrsIDType, Utils.getDefaultLocation());
         return identifier;

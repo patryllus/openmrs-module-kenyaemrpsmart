@@ -37,7 +37,7 @@ public class PSMARTRestController extends BaseRestController {
 
 	protected final Log log = LogFactory.getLog(getClass());
 
-	@RequestMapping(method = RequestMethod.POST, value = "/receiveshr")
+	@RequestMapping(method = RequestMethod.POST, value = "/getshr")
 	@ResponseBody
 	public Object receiveSHR(WebRequest request) {
 		int patientID = request.getParameter("patientID") != null? Integer.parseInt(request.getParameter("patientID")): 0;
@@ -49,7 +49,7 @@ public class PSMARTRestController extends BaseRestController {
 		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("identification", "No patient id specified in the request: Got this: => " + request.getParameter("patientID"));
 	}
 
-	@RequestMapping(method = RequestMethod.POST, value = "/prepareshr")
+	@RequestMapping(method = RequestMethod.POST, value = "/processshr")
 	@ResponseBody
 	public Object prepareSHR(WebRequest request) {
 		IncomingPatientSHR shr = new IncomingPatientSHR(getIncomingSHRSample());
@@ -61,6 +61,17 @@ public class PSMARTRestController extends BaseRestController {
 	public Object prepareEligibleList(WebRequest request) {
 		SmartCardEligibleList list = new SmartCardEligibleList();
 		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("eligibleList", list.getEligibleList().toString());
+	}
+
+	@RequestMapping(method = RequestMethod.POST, value = "/assigncardserialnumber")
+	@ResponseBody
+	public Object addSmartCardSerialToIdentifiers(WebRequest request) {
+		int patientID = request.getParameter("patientID") != null? Integer.parseInt(request.getParameter("patientID")): 0;
+		String cardSerialNumber = request.getParameter("cardSerialNumber") != null? request.getParameter("cardSerialNumber"): null;
+		String encryptedSHR = request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+
+		IncomingPatientSHR shr = new IncomingPatientSHR(patientID);
+		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("assignedSerial", shr.assignCardSerialIdentifier(cardSerialNumber, encryptedSHR));
 	}
 	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
@@ -76,47 +87,47 @@ public class PSMARTRestController extends BaseRestController {
 				"  \"VERSION\": \"1.0.0\",\n" +
 				"  \"PATIENT_IDENTIFICATION\": {\n" +
 				"    \"EXTERNAL_PATIENT_ID\": {\n" +
-				"      \"ID\": \"110ec58a-a0f2-4ac4-8393-c866d813b8d3\",\n" +
+				"      \"ID\": \"110ec58a-a0f2-4ac4-8393-c866d813b8d4\",\n" +
 				"      \"IDENTIFIER_TYPE\": \"GODS_NUMBER\",\n" +
 				"      \"ASSIGNING_AUTHORITY\": \"MPI\",\n" +
 				"      \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"    },\n" +
 				"    \"INTERNAL_PATIENT_ID\": [\n" +
 				"      {\n" +
-				"        \"ID\": \"12345678-ADFGHJY-0987654-NHYI892\",\n" +
+				"        \"ID\": \"12345678-ADFGHJY-0987654-NHYI893\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"CARD_SERIAL_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"CARD_REGISTRY\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      },\n" +
 				"      {\n" +
-				"        \"ID\": \"123456782\",\n" +
+				"        \"ID\": \"123456783\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"HEI_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"MCH\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      },\n" +
 				"      {\n" +
-				"        \"ID\": \"1234567803\",\n" +
+				"        \"ID\": \"1234567805\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"CCC_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"CCC\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      },\n" +
 				"      {\n" +
-				"        \"ID\": \"00102\",\n" +
+				"        \"ID\": \"00104\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"HTS_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"HTS\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      },\n" +
 				"      {\n" +
-				"        \"ID\": \"ABC56768\",\n" +
+				"        \"ID\": \"ABC56770\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"ANC_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"ANC\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      }\n" +
 				"    ],\n" +
 				"    \"PATIENT_NAME\": {\n" +
-				"      \"FIRST_NAME\": \"SYLVIA\",\n" +
-				"      \"MIDDLE_NAME\": \"KALUKI\",\n" +
-				"      \"LAST_NAME\": \"SHEMEJI\"\n" +
+				"      \"FIRST_NAME\": \"MARITHA\",\n" +
+				"      \"MIDDLE_NAME\": \"SIALA\",\n" +
+				"      \"LAST_NAME\": \"NGAJI\"\n" +
 				"    },\n" +
 				"    \"DATE_OF_BIRTH\": \"20111111\",\n" +
 				"    \"DATE_OF_BIRTH_PRECISION\": \"EXACT\",\n" +
