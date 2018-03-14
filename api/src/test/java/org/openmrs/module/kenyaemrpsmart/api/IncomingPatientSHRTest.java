@@ -24,7 +24,7 @@ import org.openmrs.test.BaseModuleContextSensitiveTest;
 /**
  * Tests {@link {EndPointService}}.
  */
-
+@Ignore
 public class IncomingPatientSHRTest extends BaseModuleContextSensitiveTest {
 
 	@Before
