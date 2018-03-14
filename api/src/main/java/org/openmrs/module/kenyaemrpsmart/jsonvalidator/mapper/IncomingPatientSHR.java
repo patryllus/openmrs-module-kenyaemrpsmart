@@ -18,6 +18,7 @@ import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.idgen.service.IdentifierSourceService;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
+import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
 import java.text.ParseException;
@@ -54,13 +55,21 @@ public class IncomingPatientSHR {
         this.incomingSHR = shr;
     }
 
-    public Patient processIncomingSHR() {
+    public String processIncomingSHR() {
         createOrUpdatePatient();
         savePatientIdentifiers();
         savePersonAddresses();
         savePersonAttributes();
+        String msg = "";
+        try {
+            patientService.savePatient(this.patient);
+            msg = "Patient SHR processed successfully";
+        } catch (Exception e) {
+            e.printStackTrace();
+            msg = "There was an error processing patient SHR";
+        }
 
-        return patient;
+        return msg;
     }
 
     private void createOrUpdatePatient () {
@@ -110,9 +119,9 @@ public class IncomingPatientSHR {
         PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
         PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
 
-        /*PatientIdentifier openMRSID = generateOpenMRSID();
-        openMRSID.setPreferred(true);
-        identifierSet.add(openMRSID);*/
+        PatientIdentifier openMRSID = generateOpenMRSID();
+        //openMRSID.setPreferred(true);
+        identifierSet.add(openMRSID);
         // extract GOD's Number
         String shrGodsNumber =SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
         if (shrGodsNumber != null) {
@@ -120,6 +129,7 @@ public class IncomingPatientSHR {
             PatientIdentifier godsNumber = new PatientIdentifier();
             godsNumber.setIdentifierType(GODS_NUMBER_TYPE);
             godsNumber.setIdentifier(shrGodsNumber);
+            godsNumber.setLocation(Utils.getDefaultLocation());
             //godsNumber.setLocation(new Location(Integer.parseInt(godsNumberAssigningFacility)));
             identifierSet.add(godsNumber);
         }
@@ -160,6 +170,7 @@ public class IncomingPatientSHR {
                 String assigningFacility = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].aSSIGNING_FACILITY;
                 patientIdentifier.setIdentifierType(identifierType);
                 patientIdentifier.setIdentifier(identifier);
+                patientIdentifier.setLocation(Utils.getDefaultLocation());
                 if (x ==0) {
                     patientIdentifier.setPreferred(true);
                 }
@@ -170,7 +181,7 @@ public class IncomingPatientSHR {
 
         if (!identifierSet.isEmpty()) {
             patient.setIdentifiers(identifierSet);
-            patientService.savePatient(this.patient);
+            //patientService.savePatient(this.patient);
         }
 
     }
@@ -212,7 +223,7 @@ public class IncomingPatientSHR {
     private void savePersonAttributes () {
         String tELEPHONE= SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pHONE_NUMBER;
         PersonAttributeType phoneNumberAttrType = personService.getPersonAttributeTypeByUuid(TELEPHONE_CONTACT);
-        Set<PersonAttribute> attributes = new HashSet<PersonAttribute>();
+        Set<PersonAttribute> attributes = new TreeSet<PersonAttribute>();
         if (tELEPHONE != null) {
             PersonAttribute phoneContact = new PersonAttribute();
             phoneContact.setAttributeType(phoneNumberAttrType);
@@ -220,8 +231,6 @@ public class IncomingPatientSHR {
             attributes.add(phoneContact);
         }
         patient.setAttributes(attributes);
-        patientService.savePatient(this.patient);
-
     }
 
     private void savePersonAddresses () {
@@ -264,10 +273,9 @@ public class IncomingPatientSHR {
         if (vILLAGE != null) {
             address.setCityVillage(vILLAGE);
         }
-        Set<PersonAddress> thisAddress = new HashSet<PersonAddress>();
+        Set<PersonAddress> thisAddress = new TreeSet<PersonAddress>();
         thisAddress.add(address);
         patient.setAddresses(thisAddress);
-        patientService.savePatient(this.patient);
     }
 
     private void saveHivTestData () {
@@ -292,17 +300,17 @@ public class IncomingPatientSHR {
     private PatientIdentifier generateOpenMRSID() {
         PatientIdentifierType openmrsIDType = Context.getPatientService().getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
 
-        String locationIdString = "1";//JsonUtils.readAsString(payload, "$['encounter']['encounter.location_id']");
+/*        String locationIdString = "1";//JsonUtils.readAsString(payload, "$['encounter']['encounter.location_id']");
         Location location = null;
         int locationId;
 
         if(locationIdString != null){
             locationId = Integer.parseInt(locationIdString);
             location = Context.getLocationService().getLocation(locationId);
-        }
+        }*/
 
         String generated = Context.getService(IdentifierSourceService.class).generateIdentifier(openmrsIDType, "Registration");
-        PatientIdentifier identifier = new PatientIdentifier(generated, openmrsIDType, location);
+        PatientIdentifier identifier = new PatientIdentifier(generated, openmrsIDType, Utils.getDefaultLocation());
         return identifier;
     }
 

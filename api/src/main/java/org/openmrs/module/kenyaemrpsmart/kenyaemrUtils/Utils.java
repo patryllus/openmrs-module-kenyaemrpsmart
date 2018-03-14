@@ -4,15 +4,21 @@ import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.EncounterType;
 import org.openmrs.Form;
+import org.openmrs.GlobalProperty;
+import org.openmrs.Location;
+import org.openmrs.LocationAttributeType;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.Person;
 import org.openmrs.api.context.Context;
+import org.openmrs.util.PrivilegeConstants;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Utils {
 
@@ -76,6 +82,41 @@ public class Utils {
          Integer mostRecentN, Integer obsGroupId, Date fromDate, Date toDate, boolean includeVoidedObs)
          */
         return Context.getObsService().getObservations(Arrays.asList(patient), Arrays.asList(encounter), questions, null, null, null, null, null, null, null, null, false);
+    }
+
+    public static Location getDefaultLocation() {
+        try {
+            Context.addProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);
+            Context.addProxyPrivilege(PrivilegeConstants.VIEW_GLOBAL_PROPERTIES);
+            String GP_DEFAULT_LOCATION = "kenyaemr.defaultLocation";
+            GlobalProperty gp = Context.getAdministrationService().getGlobalPropertyObject(GP_DEFAULT_LOCATION);
+            return gp != null ? ((Location) gp.getValue()) : null;
+        }
+        finally {
+            Context.removeProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);
+            Context.removeProxyPrivilege(PrivilegeConstants.VIEW_GLOBAL_PROPERTIES);
+        }
+    }
+
+    public static Location getLocationFromMFLCode(String mflCode) {
+
+        String MASTER_FACILITY_CODE = "8a845a89-6aa5-4111-81d3-0af31c45c002";
+
+        try {
+            Context.addProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);
+            Context.addProxyPrivilege(PrivilegeConstants.VIEW_GLOBAL_PROPERTIES);
+            LocationAttributeType facilityMflCode = Context.getLocationService().getLocationAttributeTypeByUuid(MASTER_FACILITY_CODE);
+            Map<LocationAttributeType, Object> mflCodeMap = new HashMap<LocationAttributeType, Object>();
+            mflCodeMap.put(facilityMflCode, mflCode);
+
+            List<Location> locationForMfl = Context.getLocationService().getLocations(null, null, mflCodeMap, false, null,null);
+
+            return locationForMfl.size() > 0 ? locationForMfl.get(0) : null;
+        }
+        finally {
+            Context.removeProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);
+            Context.removeProxyPrivilege(PrivilegeConstants.VIEW_GLOBAL_PROPERTIES);
+        }
     }
 
 
