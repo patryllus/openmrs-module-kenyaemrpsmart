@@ -1,5 +1,7 @@
 package org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper;
 
+import org.openmrs.Concept;
+import org.openmrs.Encounter;
 import org.openmrs.Location;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
@@ -24,8 +26,9 @@ import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -63,7 +66,14 @@ public class IncomingPatientSHR {
         String msg = "";
         try {
             patientService.savePatient(this.patient);
-            msg = "Patient SHR processed successfully";
+
+            try {
+                saveHivTestData();
+                msg = "Successfully saved all Hiv Test Data";
+            } catch (Exception ex) {
+                msg = "There was an error processing patient HIV tests";
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
             msg = "There was an error processing patient SHR";
@@ -185,41 +195,34 @@ public class IncomingPatientSHR {
         }
 
     }
-/*
-    private Patient createTestPatient() {
-        Patient patient = new Patient();
-        PersonName pName = new PersonName();
-        pName.setGivenName("Tom");
-        pName.setMiddleName("E.");
-        pName.setFamilyName("Patient");
-        patient.addName(pName);
-        PersonAddress pAddress = new PersonAddress();
-        pAddress.setAddress1("123 My street");
-        pAddress.setAddress2("Apt 402");
-        pAddress.setCityVillage("Anywhere city");
-        pAddress.setCountry("Some Country");
-        Set<PersonAddress> pAddressList = patient.getAddresses();
-        pAddressList.add(pAddress);
-        patient.setAddresses(pAddressList);
-        patient.addAddress(pAddress);
-        patient.setDeathDate(new Date());
-        patient.setBirthdate(new Date());
-        patient.setBirthdateEstimated(true);
-        patient.setGender("male");
-        List<PatientIdentifierType> patientIdTypes = ps.getAllPatientIdentifierTypes();
-        assertNotNull(patientIdTypes);
-        PatientIdentifier patientIdentifier = new PatientIdentifier();
-        patientIdentifier.setIdentifier("123-0");
-        patientIdentifier.setIdentifierType(patientIdTypes.get(0));
-        patientIdentifier.setLocation(new Location(1));
-        patientIdentifier.setPreferred(true);
-        Set<PatientIdentifier> patientIdentifiers = new TreeSet<PatientIdentifier>();
-        patientIdentifiers.add(patientIdentifier);
-        patient.setIdentifiers(patientIdentifiers);
 
-        ps.savePatient(patient);
-        return patient;
-    }*/
+    Concept testTypeConverter (String key) {
+        Map<String, Concept> testTypeList = new HashMap<String, Concept>();
+        testTypeList.put("SCREENING", conceptService.getConcept(162080));
+        testTypeList.put("CONFIRMATORY", conceptService.getConcept(162082));
+        return testTypeList.get(key);
+
+    }
+
+    Concept hivStatusConverter (String key) {
+        Map<String, Concept> hivStatusList = new HashMap<String, Concept>();
+        hivStatusList.put("POSITIVE", conceptService.getConcept(703));
+        hivStatusList.put("NEGATIVE", conceptService.getConcept(664));
+        hivStatusList.put("INCONCLUSIVE", conceptService.getConcept(1138));
+        return hivStatusList.get(key);
+    }
+
+    Concept testStrategyConverter (String key) {
+        Map<String, Concept> hivTestStrategyList = new HashMap<String, Concept>();
+        hivTestStrategyList.put("HP", conceptService.getConcept(164163));
+        hivTestStrategyList.put("NP", conceptService.getConcept(164953));
+        hivTestStrategyList.put("VI", conceptService.getConcept(164954));
+        hivTestStrategyList.put("VS", conceptService.getConcept(164955));
+        hivTestStrategyList.put("HB", conceptService.getConcept(159938));
+        hivTestStrategyList.put("MO", conceptService.getConcept(159939));
+        return hivTestStrategyList.get(key);
+    }
+
     private void savePersonAttributes () {
         String tELEPHONE= SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pHONE_NUMBER;
         PersonAttributeType phoneNumberAttrType = personService.getPersonAttributeTypeByUuid(TELEPHONE_CONTACT);
@@ -278,7 +281,16 @@ public class IncomingPatientSHR {
         patient.setAddresses(thisAddress);
     }
 
+
+
     private void saveHivTestData () {
+
+        Integer finalHivTestResultConcept = 159427;
+        Integer	testTypeConcept = 162084;
+        Integer testStrategyConcept = 164956;
+        Integer healthProviderConcept = 1473;
+        Integer healthFacilityNameConcept = 162724;
+
 
         for (int i = 0; i<SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length;i++){
 
@@ -289,6 +301,7 @@ public class IncomingPatientSHR {
             String strategy = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].sTRATEGY;
             String providerDetails = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].pROVIDER_DETAILS.nAME;
             Date date = null;
+
             try{
                 date = new SimpleDateFormat("yyyyMMdd").parse(dateStr);
             }
@@ -297,14 +310,100 @@ public class IncomingPatientSHR {
                 ex.printStackTrace();
             }
 
+
+            Encounter enc = new Encounter();
+            Location location = Context.getLocationService().getLocation(1);
+            enc.setLocation(location);
+            enc.setEncounterType(Context.getEncounterService().getEncounterType(1));
+            enc.setEncounterDatetime(date);
+            enc.setPatient(patient);
+            enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
+
+
+
+            // build observations
+            // test result
+            Obs o = new Obs();
+            o.setConcept(conceptService.getConcept(finalHivTestResultConcept));
+            o.setDateCreated(new Date());
+            o.setCreator(Context.getUserService().getUser(1));
+            o.setLocation(location);
+            o.setObsDatetime(date);
+            o.setPerson(this.patient);
+            o.setValueCoded(hivStatusConverter(result.trim()));
+
+            // test type
+            Obs o1 = new Obs();
+            o1.setConcept(conceptService.getConcept(testTypeConcept));
+            o1.setDateCreated(new Date());
+            o1.setCreator(Context.getUserService().getUser(1));
+            o1.setLocation(location);
+            o1.setObsDatetime(date);
+            o1.setPerson(this.patient);
+            o1.setValueCoded(testTypeConverter(type.trim()));
+
+            // test strategy
+            Obs o2 = new Obs();
+            o2.setConcept(conceptService.getConcept(testStrategyConcept));
+            o2.setDateCreated(new Date());
+            o2.setCreator(Context.getUserService().getUser(1));
+            o2.setLocation(location);
+            o2.setObsDatetime(date);
+            o2.setPerson(this.patient);
+            o2.setValueCoded(testStrategyConverter(strategy.trim()));
+
+            // test provider
+            Obs o3 = new Obs();
+            o3.setConcept(conceptService.getConcept(healthProviderConcept));
+            o3.setDateCreated(new Date());
+            o3.setCreator(Context.getUserService().getUser(1));
+            o3.setLocation(location);
+            o3.setObsDatetime(date);
+            o3.setPerson(this.patient);
+            o3.setValueText(providerDetails.trim());
+
+            // test facility
+            Obs o4 = new Obs();
+            o4.setConcept(conceptService.getConcept(healthFacilityNameConcept));
+            o4.setDateCreated(new Date());
+            o4.setCreator(Context.getUserService().getUser(1));
+            o4.setLocation(location);
+            o4.setObsDatetime(date);
+            o4.setPerson(this.patient);
+            o4.setValueText(facility.trim());
+
+            enc.addObs(o);
+            enc.addObs(o1);
+            enc.addObs(o2);
+            enc.addObs(o3);
+            enc.addObs(o4);
+            encounterService.saveEncounter(enc);
+
         }
     }
 
     private void saveImmunization () {
-        for (int i = 0; i< SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length;i++){
+        for (int i = 0; i< SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION.length;i++){
 
             String name = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].nAME;
             String dateAministered = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].dATE_ADMINISTERED;
+            Date date = null;
+            try{
+                date = new SimpleDateFormat("yyyyMMdd").parse(dateAministered);
+            }
+            catch(ParseException ex){
+
+                ex.printStackTrace();
+            }
+
+            Encounter enc = new Encounter();
+            Location location = Context.getLocationService().getLocation(1);
+            enc.setLocation(location);
+            enc.setEncounterType(Context.getEncounterService().getEncounterType(1));
+            enc.setEncounterDatetime(date);
+            enc.setPatient(patient);
+            enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
+
         }
     }
 

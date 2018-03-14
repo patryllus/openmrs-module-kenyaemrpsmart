@@ -559,12 +559,12 @@ public class OutgoingPatientSHR {
 
     String testStrategyConverter (Concept key) {
         Map<Concept, String> hivTestStrategyList = new HashMap<Concept, String>();
-        hivTestStrategyList.put(conceptService.getConcept(164163), "Provider Initiated Testing(PITC)");
-        hivTestStrategyList.put(conceptService.getConcept(164953), "Non Provider Initiated Testing");
-        hivTestStrategyList.put(conceptService.getConcept(164954), "Integrated VCT Center");
-        hivTestStrategyList.put(conceptService.getConcept(164955), "Stand Alone VCT Center");
-        hivTestStrategyList.put(conceptService.getConcept(159938), "Home Based Testing");
-        hivTestStrategyList.put(conceptService.getConcept(159939), "Mobile Outreach HTS");
+        hivTestStrategyList.put(conceptService.getConcept(164163), "HP");
+        hivTestStrategyList.put(conceptService.getConcept(164953), "NP");
+        hivTestStrategyList.put(conceptService.getConcept(164954), "VI");
+        hivTestStrategyList.put(conceptService.getConcept(164955), "VS");
+        hivTestStrategyList.put(conceptService.getConcept(159938), "HB");
+        hivTestStrategyList.put(conceptService.getConcept(159939), "MO");
         return hivTestStrategyList.get(key);
     }
 
@@ -666,17 +666,17 @@ public class OutgoingPatientSHR {
 
     String testTypeConverter (Concept key) {
         Map<Concept, String> testTypeList = new HashMap<Concept, String>();
-        testTypeList.put(conceptService.getConcept(162080), "Initial");
-        testTypeList.put(conceptService.getConcept(162082), "Confirmation");
+        testTypeList.put(conceptService.getConcept(162080), "SCREENING");
+        testTypeList.put(conceptService.getConcept(162082), "CONFIRMATORY");
         return testTypeList.get(key);
 
     }
 
     String hivStatusConverter (Concept key) {
         Map<Concept, String> hivStatusList = new HashMap<Concept, String>();
-        hivStatusList.put(conceptService.getConcept(703), "Positive");
-        hivStatusList.put(conceptService.getConcept(664), "Negative");
-        hivStatusList.put(conceptService.getConcept(1138), "Inconclusive");
+        hivStatusList.put(conceptService.getConcept(703), "POSITIVE");
+        hivStatusList.put(conceptService.getConcept(664), "NEGATIVE");
+        hivStatusList.put(conceptService.getConcept(1138), "INCONCLUSIVE");
         return hivStatusList.get(key);
     }
 
