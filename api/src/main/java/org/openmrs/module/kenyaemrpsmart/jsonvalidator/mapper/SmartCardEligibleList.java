@@ -11,7 +11,9 @@ import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class SmartCardEligibleList {
     String IMMUNIZATION_FORM_UUID = "b4f3859e-861c-4a63-bdff-eb7392030d47";
@@ -23,37 +25,38 @@ public class SmartCardEligibleList {
         return factory;
     }
 
-    public ObjectNode getEligibleList() {
+    public ArrayNode getEligibleList() {
 
         Form HTS_INITIAL_FORM = Context.getFormService().getFormByUuid(HTS_INITIAL_TEST_FORM_UUID);
         Form HTS_CONFIRMATORY_FORM = Context.getFormService().getFormByUuid(HTS_CONFIRMATORY_TEST_FORM_UUID);
         Form IMMUNIZATION_FORM =  Context.getFormService().getFormByUuid(IMMUNIZATION_FORM_UUID);
         List<Encounter> allEncounters = Utils.getEncounters(null, Arrays.asList(HTS_CONFIRMATORY_FORM, HTS_INITIAL_FORM, IMMUNIZATION_FORM));
         ArrayNode node = getJsonNodeFactory().arrayNode();
-        List<Patient> patientList = new ArrayList<Patient>();
+        Set<Patient> patientList = new HashSet<Patient>();
         int counter = 0;
         for(Encounter encounter: allEncounters) {
-            if(counter > 10) {
+            if(counter == 10) {
                 break;
             }
             Patient patient = encounter.getPatient();
             ObjectNode patientNode = getJsonNodeFactory().objectNode();
             if(!patientList.contains(patient) && patient.getAge() < 10) {
-                patientNode.put("PATIENT_ID", patient.getPatientId());
-                patientNode.put("FIRST_NAME", patient.getGivenName());
-                patientNode.put("MIDDLE_NAME", patient.getMiddleName());
-                patientNode.put("LAST_NAME", patient.getFamilyName());
+                patientNode.put("PATIENTID", patient.getPatientId());
+                patientNode.put("FIRSTNAME", patient.getGivenName());
+                patientNode.put("MIDDLENAME", patient.getMiddleName());
+                patientNode.put("LASTNAME", patient.getFamilyName());
                 patientNode.put("AGE", patient.getAge());
                 patientNode.put("GENDER", patient.getGender());
                 patientList.add(patient);
+                node.add(patientNode);
                 counter++;
 
             }
-            node.add(patientNode);
+
 
         }
-        ObjectNode wrapper = getJsonNodeFactory().objectNode();
-        wrapper.put("ELIGIBLE_LIST", node);
-        return wrapper;
+        /*ObjectNode wrapper = getJsonNodeFactory().objectNode();
+        wrapper.put("ELIGIBLE_LIST", node);*/
+        return node;
     }
 }

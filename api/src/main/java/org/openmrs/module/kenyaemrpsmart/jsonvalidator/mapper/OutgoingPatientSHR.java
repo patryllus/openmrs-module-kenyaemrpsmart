@@ -25,6 +25,7 @@ import org.openmrs.api.ObsService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
 import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
@@ -222,7 +223,8 @@ public class OutgoingPatientSHR {
         Map<String, String> patientIdentifiers = new HashMap<String, String>();
         String facilityMFL = getFacilityMFL();
         JsonNodeFactory factory = getJsonNodeFactory();
-        ObjectNode identifiers = factory.objectNode();
+        ObjectNode patientSHR = factory.objectNode();
+        ObjectNode patientIdentificationNode = factory.objectNode();
         ArrayNode internalIdentifiers = factory.arrayNode();
         ObjectNode externalIdentifiers = factory.objectNode();
 
@@ -311,22 +313,31 @@ public class OutgoingPatientSHR {
         }
 
 
-        identifiers.put("INTERNAL_PATIENT_ID", internalIdentifiers);
-        identifiers.put("EXTERNAL_PATIENT_ID", externalIdentifiers);
-        identifiers.put("PATIENT_NAME", getPatientName());
-        identifiers.put("DATE_OF_BIRTH", dob);
-        identifiers.put("DATE_OF_BIRTH_PRECISION", dobPrecision);
-        identifiers.put("SEX", sex);
-        identifiers.put("DEATH_DATE", deathDate);
-        identifiers.put("DEATH_INDICATOR", deathIndicator);
-        identifiers.put("PATIENT_ADDRESS", getPatientAddress());
-        identifiers.put("PHONE_NUMBER", getPatientPhoneNumber());
-        identifiers.put("MARITAL_STATUS", getMaritalStatus());
-        identifiers.put("MOTHER_DETAILS", getMotherDetails());
-        identifiers.put("HIV_TEST", getHivTests());
-        identifiers.put("IMMUNIZATION", extractImmunizationInformation());
-        identifiers.put("NEXT_OF_KIN", getJsonNodeFactory().arrayNode());
-        return identifiers;
+        patientIdentificationNode.put("INTERNAL_PATIENT_ID", internalIdentifiers);
+        patientIdentificationNode.put("EXTERNAL_PATIENT_ID", externalIdentifiers);
+        patientIdentificationNode.put("PATIENT_NAME", getPatientName());
+        patientIdentificationNode.put("DATE_OF_BIRTH", dob);
+        patientIdentificationNode.put("DATE_OF_BIRTH_PRECISION", dobPrecision);
+        patientIdentificationNode.put("SEX", sex);
+        patientIdentificationNode.put("DEATH_DATE", deathDate);
+        patientIdentificationNode.put("DEATH_INDICATOR", deathIndicator);
+        patientIdentificationNode.put("PATIENT_ADDRESS", getPatientAddress());
+        patientIdentificationNode.put("PHONE_NUMBER", getPatientPhoneNumber());
+        patientIdentificationNode.put("MARITAL_STATUS", getMaritalStatus());
+        patientIdentificationNode.put("MOTHER_DETAILS", getMotherDetails());
+        patientSHR.put("VERSION", "1.0.0");
+        // append card details section
+        ObjectNode value = factory.objectNode();
+        value.put("STATUS", "ACTIVE");
+        value.put("REASON", "");
+        value.put("LAST_UPDATED", getSimpleDateFormat(getSHRDateFormat()).format(new Date()));
+        value.put("LAST_UPDATED_FACILITY", Utils.getDefaultLocation().getLocationId());
+        patientSHR.put("CARD_DETAILS", value);
+        patientSHR.put("PATIENT_IDENTIFICATION", patientIdentificationNode);
+        patientSHR.put("HIV_TEST", getHivTests());
+        patientSHR.put("IMMUNIZATION", extractImmunizationInformation());
+        patientSHR.put("NEXT_OF_KIN", getJsonNodeFactory().arrayNode());
+        return patientSHR;
    }
 
     public ArrayNode getMotherIdentifiers (Patient patient) {

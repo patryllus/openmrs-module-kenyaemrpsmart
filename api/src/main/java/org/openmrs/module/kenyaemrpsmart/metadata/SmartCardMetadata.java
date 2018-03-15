@@ -41,6 +41,10 @@ public class SmartCardMetadata extends AbstractMetadataBundle {
 		public static final String PSMART_IMMUNIZATION = "9bc15bd8-2794-11e8-b467-0ed5f89f718b";
 	}
 
+	public static final class _VisitType {
+		public static final String OUTPATIENT = "3371a4d4-f66f-4454-a86d-92c7b3da990c";
+	}
+
 	/**
 	 * stored data read from smart card. this is separate so that reports in the system are not affected
 	 */
