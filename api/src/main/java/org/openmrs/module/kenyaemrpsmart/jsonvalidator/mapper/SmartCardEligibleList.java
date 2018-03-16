@@ -6,11 +6,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.openmrs.Encounter;
 import org.openmrs.Form;
 import org.openmrs.Patient;
+import org.openmrs.PatientIdentifier;
+import org.openmrs.PatientIdentifierType;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
+import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,16 +36,20 @@ public class SmartCardEligibleList {
         Form HTS_CONFIRMATORY_FORM = Context.getFormService().getFormByUuid(HTS_CONFIRMATORY_TEST_FORM_UUID);
         Form IMMUNIZATION_FORM =  Context.getFormService().getFormByUuid(IMMUNIZATION_FORM_UUID);
         List<Encounter> allEncounters = Utils.getEncounters(null, Arrays.asList(HTS_CONFIRMATORY_FORM, HTS_INITIAL_FORM, IMMUNIZATION_FORM));
+        PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = Context.getPatientService().getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
+
         ArrayNode node = getJsonNodeFactory().arrayNode();
         Set<Patient> patientList = new HashSet<Patient>();
+        SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
         int counter = 0;
         for(Encounter encounter: allEncounters) {
             if(counter == 10) {
                 break;
             }
             Patient patient = encounter.getPatient();
+            List<PatientIdentifier> identifiers = patient.getPatientIdentifiers(SMART_CARD_SERIAL_NUMBER_TYPE);
             ObjectNode patientNode = getJsonNodeFactory().objectNode();
-            if(!patientList.contains(patient) && patient.getAge() < 10) {
+            if(!patientList.contains(patient) && identifiers.size() == 0 && df.format(encounter.getEncounterDatetime()).equals(df.format(new Date())) && patient.getAge() < 10) {
                 patientNode.put("PATIENTID", patient.getPatientId());
                 patientNode.put("FIRSTNAME", patient.getGivenName());
                 patientNode.put("MIDDLENAME", patient.getMiddleName());

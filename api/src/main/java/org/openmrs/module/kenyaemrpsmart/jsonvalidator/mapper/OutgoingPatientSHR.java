@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.JSONPObject;
 import org.openmrs.Concept;
 import org.openmrs.Encounter;
+import org.openmrs.EncounterType;
 import org.openmrs.Form;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
@@ -113,10 +114,22 @@ public class OutgoingPatientSHR {
         Form HTS_INITIAL_FORM = Context.getFormService().getFormByUuid(HTS_INITIAL_TEST_FORM_UUID);
         Form HTS_CONFIRMATORY_FORM = Context.getFormService().getFormByUuid(HTS_CONFIRMATORY_TEST_FORM_UUID);
 
+        EncounterType smartCardHTSEntry = Context.getEncounterService().getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA);
+        Form SMART_CARD_HTS_FORM = Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_HIV_TEST);
+
+
         List<Encounter> htsEncounters = Utils.getEncounters(patient, Arrays.asList(HTS_CONFIRMATORY_FORM, HTS_INITIAL_FORM));
+        List<Encounter> processedIncomingTests = Utils.getEncounters(patient, Arrays.asList(SMART_CARD_HTS_FORM));
+
         ArrayNode testList = getJsonNodeFactory().arrayNode();
         // loop through encounters and extract hiv test information
         for(Encounter encounter : htsEncounters) {
+            List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept));
+            testList.add(extractHivTestInformation(obs));
+        }
+
+        // append processed tests from card
+        for(Encounter encounter : processedIncomingTests) {
             List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept));
             testList.add(extractHivTestInformation(obs));
         }
@@ -549,11 +562,17 @@ public class OutgoingPatientSHR {
 
         for(Obs obs:obsList) {
 
+            if(obs.getEncounter().getForm().getUuid().equals(HTS_CONFIRMATORY_TEST_FORM_UUID)) {
+                testType = "CONFIRMATORY";
+            } else {
+                testType = "SCREENING";
+            }
+
             if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept) ) {
                 testResult = hivStatusConverter(obs.getValueCoded());
-            } else if (obs.getConcept().getConceptId().equals(testTypeConcept )) {
+            } /*else if (obs.getConcept().getConceptId().equals(testTypeConcept )) {
                 testType = testTypeConverter(obs.getValueCoded());
-            } else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
+            }*/ else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
                 testStrategy = testStrategyConverter(obs.getValueCoded());
             }
         }
