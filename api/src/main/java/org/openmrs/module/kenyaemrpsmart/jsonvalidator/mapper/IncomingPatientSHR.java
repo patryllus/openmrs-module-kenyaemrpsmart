@@ -2,6 +2,8 @@ package org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper;
 
 import org.openmrs.Concept;
 import org.openmrs.Encounter;
+import org.openmrs.EncounterType;
+import org.openmrs.Form;
 import org.openmrs.Location;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
@@ -28,6 +30,7 @@ import org.openmrs.module.metadatadeploy.MetadataUtils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -427,6 +430,7 @@ public class IncomingPatientSHR {
         Integer testStrategyConcept = 164956;
         Integer healthProviderConcept = 1473;
         Integer healthFacilityNameConcept = 162724;
+        Integer healthProviderIdentifierConcept = 163161;
 
 
         for (int i = 0; i<SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length;i++){
@@ -437,6 +441,8 @@ public class IncomingPatientSHR {
             String facility = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].fACILITY;
             String strategy = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].sTRATEGY;
             String providerDetails = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].pROVIDER_DETAILS.nAME;
+            String providerId = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].pROVIDER_DETAILS.iD;
+
             Date date = null;
 
             try{
@@ -499,6 +505,16 @@ public class IncomingPatientSHR {
             o3.setPerson(this.patient);
             o3.setValueText(providerDetails.trim());
 
+            // test provider id
+            Obs o5 = new Obs();
+            o5.setConcept(conceptService.getConcept(healthProviderIdentifierConcept));
+            o5.setDateCreated(new Date());
+            o5.setCreator(Context.getUserService().getUser(1));
+            o5.setLocation(location);
+            o5.setObsDatetime(date);
+            o5.setPerson(this.patient);
+            o5.setValueText(providerId.trim());
+
             // test facility
             Obs o4 = new Obs();
             o4.setConcept(conceptService.getConcept(healthFacilityNameConcept));
@@ -509,17 +525,108 @@ public class IncomingPatientSHR {
             o4.setPerson(this.patient);
             o4.setValueText(facility.trim());
 
+
             enc.addObs(o);
             enc.addObs(o1);
             enc.addObs(o2);
             enc.addObs(o3);
             enc.addObs(o4);
+            enc.addObs(o5);
             encounterService.saveEncounter(enc);
 
         }
     }
 
-    private void saveImmunization () {
+    private void saveImmunizationData(List<ImmunizationWrapper> data) {
+
+        EncounterType pSmartDataEncType = encounterService.getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA);
+        Form pSmartImmunizationForm = Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_IMMUNIZATION);
+        //enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
+
+        // organize data according to date
+        Map<Date, List<ImmunizationWrapper>> organizedImmunizations = new HashMap<Date, List<ImmunizationWrapper>>();
+        for(ImmunizationWrapper immunization : data) {
+            Date vaccineDate = immunization.getVaccineDate();
+            if(organizedImmunizations.containsKey(vaccineDate)) {
+                organizedImmunizations.get(vaccineDate).add(immunization);
+            } else {
+                organizedImmunizations.put(vaccineDate, Arrays.asList(immunization));
+            }
+        }
+
+        // loop through different dates
+        for(Date immunizationDate : organizedImmunizations.keySet()) {
+
+            List<ImmunizationWrapper> immunizationList = organizedImmunizations.get(immunizationDate);
+            // build encounter
+            Encounter enc = new Encounter();
+            Location location = Context.getLocationService().getLocation(1);
+            enc.setLocation(location);
+            enc.setEncounterType(pSmartDataEncType);
+            enc.setEncounterDatetime(immunizationDate);
+            enc.setPatient(patient);
+            enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
+            enc.setForm(pSmartImmunizationForm);
+
+            // build obs and add to encounter
+            for(ImmunizationWrapper entry : immunizationList) {
+                Set<Obs> obs = createImmunizationObs(entry);
+                enc.setObs(obs);
+            }
+            encounterService.saveEncounter(enc);
+
+        }
+
+    }
+
+    private Set<Obs> createImmunizationObs(ImmunizationWrapper entry) {
+
+        Concept groupingConcept = conceptService.getConcept(1421);
+        Concept	vaccineConcept = conceptService.getConcept(984);
+        Concept sequenceNumber = conceptService.getConcept(1418);
+        Set<Obs> immunizationObs = new HashSet<Obs>();
+
+        Obs obsGroup = new Obs();
+        obsGroup.setConcept(groupingConcept);
+        obsGroup.setObsDatetime(entry.getVaccineDate());
+        obsGroup.setPerson(patient);
+
+        Obs immunization = new Obs();
+        immunization.setConcept(vaccineConcept);
+        immunization.setValueCoded(entry.getVaccine());
+        immunization.setObsDatetime(entry.getVaccineDate());
+        immunization.setPerson(patient);
+        immunization.setObsGroup(obsGroup);
+
+        immunizationObs.addAll(Arrays.asList(obsGroup, immunization));
+
+        if(entry.getSequenceNumber() != null) {
+            Obs immunizationSequenceNumber = new Obs();
+            immunizationSequenceNumber.setConcept(sequenceNumber);
+            immunizationSequenceNumber.setValueNumeric(Double.valueOf(entry.getSequenceNumber()));
+            immunizationSequenceNumber.setPerson(patient);
+            immunizationSequenceNumber.setObsGroup(obsGroup);
+            immunizationObs.add(immunizationSequenceNumber);
+        }
+
+
+        return immunizationObs;
+    }
+
+
+    private List<ImmunizationWrapper> processImmunizationData () {
+
+        Concept BCG = conceptService.getConcept(886);
+        Concept OPV = conceptService.getConcept(783);
+        Concept IPV = conceptService.getConcept(1422);
+        Concept DPT = conceptService.getConcept(781);
+        Concept PCV = conceptService.getConcept(162342);
+        Concept ROTA = conceptService.getConcept(83531);
+        Concept MEASLESorRUBELLA = conceptService.getConcept(162586);
+        Concept MEASLES = conceptService.getConcept(36);
+        Concept YELLOW_FEVER = conceptService.getConcept(5864);
+
+        List<ImmunizationWrapper> shrData = new ArrayList<ImmunizationWrapper>();
         for (int i = 0; i< SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION.length;i++){
 
             String name = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].nAME;
@@ -532,17 +639,53 @@ public class IncomingPatientSHR {
 
                 ex.printStackTrace();
             }
+            ImmunizationWrapper entry = new ImmunizationWrapper();
 
-            Encounter enc = new Encounter();
-            Location location = Context.getLocationService().getLocation(1);
-            enc.setLocation(location);
-            enc.setEncounterType(Context.getEncounterService().getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA));
-            enc.setEncounterDatetime(date);
-            enc.setPatient(patient);
-            enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
-            enc.setForm(Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_IMMUNIZATION));
+            if (name.trim().equals("BCG")) {
+                entry.setVaccine(BCG);
+                entry.setSequenceNumber(null);
+            } else if (name.trim().equals("OPV_AT_BIRTH")) {
+                entry.setVaccine(OPV);
+                entry.setSequenceNumber(0);
+            } else if (name.trim().equals("OPV1")) {
+                entry.setVaccine(OPV);
+                entry.setSequenceNumber(1);
+            } else if (name.trim().equals("OPV2")) {
+                entry.setVaccine(OPV);
+                entry.setSequenceNumber(2);
+            } else if (name.trim().equals("OPV3")) {
+                entry.setVaccine(OPV);
+                entry.setSequenceNumber(3);
+            } else if (name.trim().equals("PCV10-1")) {
+                entry.setVaccine(PCV);
+                entry.setSequenceNumber(1);
+            } else if (name.trim().equals("PCV10-2")) {
+                entry.setVaccine(PCV);
+                entry.setSequenceNumber(2);
+            } else if (name.trim().equals("PCV10-3")) {
+                entry.setVaccine(PCV);
+                entry.setSequenceNumber(3);
+            } else if (name.trim().equals("ROTA1")) {
+                entry.setVaccine(ROTA);
+                entry.setSequenceNumber(1);
+            } else if (name.trim().equals("ROTA2")) {
+                entry.setVaccine(ROTA);
+                entry.setSequenceNumber(2);
+            } else if (name.trim().equals("MEASLES6")) {
+                entry.setVaccine(MEASLES);
+                entry.setSequenceNumber(1);
+            } else if (name.trim().equals("MEASLES9")) {
+                entry.setVaccine(MEASLESorRUBELLA);
+                entry.setSequenceNumber(1);
+            } else if (name.trim().equals("MEASLES18")) {
+                entry.setVaccine(MEASLESorRUBELLA);
+                entry.setSequenceNumber(2);
+            }
+            entry.setVaccineDate(date);
+            shrData.add(entry);
 
         }
+        return shrData;
     }
 
     private void saveObsData () {

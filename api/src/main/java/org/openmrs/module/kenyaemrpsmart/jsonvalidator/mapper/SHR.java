@@ -224,10 +224,12 @@ public final class SHR {
 
         public static final class PROVIDER_DETAILS {
             public final String nAME;
+            public final String iD;
     
             @JsonCreator
-            public PROVIDER_DETAILS(@JsonProperty("NAME") String nAME){
+            public PROVIDER_DETAILS(@JsonProperty("NAME") String nAME, @JsonProperty("ID") String iD){
                 this.nAME = nAME;
+                this.iD = iD;
             }
         }
     }

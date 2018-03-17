@@ -722,7 +722,7 @@ public class OutgoingPatientSHR {
 
         Concept groupingConcept = conceptService.getConcept(1421);
         Concept	vaccineConcept = conceptService.getConcept(984);
-        Concept accessionNumber = conceptService.getConcept(1418);
+        Concept sequenceNumber = conceptService.getConcept(1418);
 
         ArrayNode immunizationNode = getJsonNodeFactory().arrayNode();
         // get immunizations from immunization form
@@ -767,7 +767,7 @@ public class OutgoingPatientSHR {
                 for (Obs memberObs : members) {
                     if (memberObs.getConcept().equals(vaccineConcept) ) {
                         vaccine = memberObs.getValueCoded();
-                    } else if (memberObs.getConcept().equals(accessionNumber)) {
+                    } else if (memberObs.getConcept().equals(sequenceNumber)) {
                         sequence = memberObs.getValueNumeric() != null? memberObs.getValueNumeric().intValue() : 1000; // put 1000 for null
                     }
                 }
@@ -782,44 +782,5 @@ public class OutgoingPatientSHR {
         }
         return immunizationNode;
     }
-
-    class ImmunizationWrapper {
-        Concept vaccine;
-        Integer sequenceNumber;
-        Date vaccineDate;
-
-        public ImmunizationWrapper(Concept vaccine, Integer sequenceNumber, Date vaccineDate) {
-            this.vaccine = vaccine;
-            this.sequenceNumber = sequenceNumber;
-            this.vaccineDate = vaccineDate;
-        }
-
-        public Concept getVaccine() {
-            return vaccine;
-        }
-
-        public void setVaccine(Concept vaccine) {
-            this.vaccine = vaccine;
-        }
-
-        public Integer getSequenceNumber() {
-            return sequenceNumber;
-        }
-
-        public void setSequenceNumber(Integer sequenceNumber) {
-            this.sequenceNumber = sequenceNumber;
-        }
-
-        public Date getVaccineDate() {
-            return vaccineDate;
-        }
-
-        public void setVaccineDate(Date vaccineDate) {
-            this.vaccineDate = vaccineDate;
-        }
-
-
-    }
-
 
 }
