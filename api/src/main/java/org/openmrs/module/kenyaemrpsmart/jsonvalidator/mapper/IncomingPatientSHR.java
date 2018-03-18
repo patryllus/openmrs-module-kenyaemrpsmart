@@ -688,6 +688,67 @@ public class IncomingPatientSHR {
         return shrData;
     }
 
+    /**
+     * saves the first next of kin details. The system does not support multiple
+     */
+    private void saveNextOfKinDetails() {
+
+        String NEXT_OF_KIN_ADDRESS = "7cf22bec-d90a-46ad-9f48-035952261294";
+        String NEXT_OF_KIN_CONTACT = "342a1d39-c541-4b29-8818-930916f4c2dc";
+        String NEXT_OF_KIN_NAME = "830bef6d-b01f-449d-9f8d-ac0fede8dbd3";
+        String NEXT_OF_KIN_RELATIONSHIP = "d0aa9fd1-2ac5-45d8-9c5e-4317c622c8f5";
+        Set<PersonAttribute> attributes = new TreeSet<PersonAttribute>();
+        if(SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN != null && SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN.length > 0){
+            PersonAttributeType nextOfKinNameAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_NAME);
+            PersonAttributeType nextOfKinAddressAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_ADDRESS);
+            PersonAttributeType nextOfKinPhoneContactAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_CONTACT);
+            PersonAttributeType nextOfKinRelationshipAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_RELATIONSHIP);
+
+            String nextOfKinName = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.fIRST_NAME + " "+
+                    SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.mIDDLE_NAME + " "+
+                    SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.lAST_NAME ;
+            String nextOfKinAddress = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].aDDRESS;
+            String nextOfKinPhoneContact = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].pHONE_NUMBER;
+            String nextOfKinRelationship = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].rELATIONSHIP;
+
+            if (nextOfKinName != null) {
+                PersonAttribute kinName = new PersonAttribute();
+                kinName.setAttributeType(nextOfKinNameAttrType);
+                kinName.setValue(nextOfKinName.trim());
+                attributes.add(kinName);
+            }
+
+            if (nextOfKinAddress != null) {
+                PersonAttribute kinAddress = new PersonAttribute();
+                kinAddress.setAttributeType(nextOfKinAddressAttrType);
+                kinAddress.setValue(nextOfKinAddress.trim());
+                attributes.add(kinAddress);
+            }
+
+            if (nextOfKinPhoneContact != null) {
+                PersonAttribute kinPhoneContact = new PersonAttribute();
+                kinPhoneContact.setAttributeType(nextOfKinPhoneContactAttrType);
+                kinPhoneContact.setValue(nextOfKinPhoneContact.trim());
+                attributes.add(kinPhoneContact);
+            }
+
+            if (nextOfKinRelationship != null) {
+                PersonAttribute kinRelationship = new PersonAttribute();
+                kinRelationship.setAttributeType(nextOfKinRelationshipAttrType);
+                kinRelationship.setValue(nextOfKinRelationship.trim());
+                attributes.add(kinRelationship);
+            }
+            patient.setAttributes(attributes);
+        }
+
+
+
+    }
+
+    private void saveMotherDetails() {
+
+    }
+
     private void saveObsData () {
 
         String cIVIL_STATUS=SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mARITAL_STATUS;
