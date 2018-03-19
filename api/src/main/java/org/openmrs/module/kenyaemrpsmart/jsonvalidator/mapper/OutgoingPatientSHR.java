@@ -620,73 +620,73 @@ public class OutgoingPatientSHR {
         if (wrapper.getVaccine().equals(BCG)) {
             node.put("NAME","BCG");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.sequenceNumber == 0) {
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 0) {
             node.put("NAME","OPV_AT_BIRTH");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.sequenceNumber == 1000) {
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 1000) {
             node.put("NAME","OPV");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.sequenceNumber == 1) {
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 1) {
             node.put("NAME","OPV1");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.sequenceNumber == 2) {
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 2) {
             node.put("NAME","OPV2");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.sequenceNumber == 3) {
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 3) {
             node.put("NAME","OPV3");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(IPV) && wrapper.sequenceNumber == 1000) {
+        } else if (wrapper.getVaccine().equals(IPV) && wrapper.getSequenceNumber() == 1000) {
             node.put("NAME","IPV");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(IPV) && wrapper.sequenceNumber == 1) {
+        } else if (wrapper.getVaccine().equals(IPV) && wrapper.getSequenceNumber() == 1) {
             node.put("NAME","IPV");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(DPT) && wrapper.sequenceNumber == 1000) {
+        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 1000) {
             node.put("NAME","DPT/Hep_B/Hib");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(DPT) && wrapper.sequenceNumber == 1) {
+        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 1) {
             node.put("NAME","DPT/Hep_B/Hib_1");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(DPT) && wrapper.sequenceNumber == 2) {
+        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 2) {
             node.put("NAME","DPT/Hep_B/Hib_2");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(DPT) && wrapper.sequenceNumber == 3) {
+        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 3) {
             node.put("NAME","DPT/Hep_B/Hib_3");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(PCV) && wrapper.sequenceNumber == 1000) {
+        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 1000) {
             node.put("NAME","PCV10");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(PCV) && wrapper.sequenceNumber == 1) {
+        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 1) {
             node.put("NAME","PCV10-1");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(PCV) && wrapper.sequenceNumber == 2) {
+        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 2) {
             node.put("NAME","PCV10-2");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(PCV) && wrapper.sequenceNumber == 3) {
+        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 3) {
             node.put("NAME","PCV10-3");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.sequenceNumber == 1000) {
+        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 1000) {
             node.put("NAME","ROTA");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.sequenceNumber == 1) {
+        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 1) {
             node.put("NAME","ROTA1");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.sequenceNumber == 2) {
+        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 2) {
             node.put("NAME","ROTA2");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(MEASLES) && (wrapper.sequenceNumber == 1 || wrapper.sequenceNumber == 1000)) {
+        } else if (wrapper.getVaccine().equals(MEASLES) && (wrapper.getSequenceNumber() == 1 || wrapper.getSequenceNumber() == 1000)) {
             node.put("NAME","MEASLES6");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.sequenceNumber == 1000) {
+        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 1000) {
             node.put("NAME","MEASLES9");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.sequenceNumber == 1) {
+        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 1) {
             node.put("NAME","MEASLES9");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.sequenceNumber == 2) {
+        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 2) {
             node.put("NAME","MEASLES18");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(YELLOW_FEVER) && (wrapper.sequenceNumber == 1 || wrapper.sequenceNumber == 1000)) {
+        } else if (wrapper.getVaccine().equals(YELLOW_FEVER) && (wrapper.getSequenceNumber() == 1 || wrapper.getSequenceNumber() == 1000)) {
             node.put("NAME","YELLOW_FEVER");
             node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
         }
