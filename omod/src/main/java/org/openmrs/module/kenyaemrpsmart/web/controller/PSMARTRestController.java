@@ -14,7 +14,6 @@
 package org.openmrs.module.kenyaemrpsmart.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.util.JSONPObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.IncomingPatientSHR;
@@ -121,6 +120,24 @@ public class PSMARTRestController extends BaseRestController {
 		cardSerialNumber = thisRequest.getCardSerialNumber();
 		IncomingPatientSHR shr = new IncomingPatientSHR(patientID);
 		return shr.assignCardSerialIdentifier(cardSerialNumber, null);
+	}
+
+	@RequestMapping(method = RequestMethod.POST, value = "/checkexistingclient")
+	@ResponseBody
+	public Object clientExists(HttpServletRequest request) {
+
+		Integer patientID=null;
+		String cardSerialNumber=null;
+		String requestBody = null;
+		MiddlewareRequest thisRequest = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+
+		IncomingPatientSHR shr = new IncomingPatientSHR(requestBody);
+		return shr.patientExists();
 	}
 
 	/**

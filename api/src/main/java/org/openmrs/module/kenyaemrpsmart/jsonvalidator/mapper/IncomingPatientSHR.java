@@ -1,5 +1,6 @@
 package org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper;
 
+import org.openmrs.Attributable;
 import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.EncounterType;
@@ -15,6 +16,7 @@ import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
 import org.openmrs.Visit;
 import org.openmrs.VisitType;
+import org.openmrs.api.APIException;
 import org.openmrs.api.AdministrationService;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.EncounterService;
@@ -35,6 +37,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,7 +64,6 @@ public class IncomingPatientSHR {
     Set<PatientIdentifier> identifierSet = new HashSet<PatientIdentifier>();
 
 
-
     public IncomingPatientSHR(String shr) {
 
         this.patientService = Context.getPatientService();
@@ -86,37 +88,47 @@ public class IncomingPatientSHR {
 
     public String processIncomingSHR() {
 
-        Patient existingPatient = patientExists();
+        //Patient existingPatient = checkIfPatientExists();
         String msg = "";
-
-/*        if(existingPatient != null) {
-            //checkinPatient();
-            msg = "Patient successfully checked in";
-        } else {*/
+        Patient patient = checkIfPatientExists();
+        if (patient != null) {
+            this.patient = patient;
+        } else {
             createOrUpdatePatient();
-            savePatientIdentifiers();
+            addOpenMRSIdentifier();
             savePersonAddresses();
+        }
+
+        savePersonAddresses();
+        savePersonAttributes();
+        addOtherPatientIdentifiers();
+        if (patient == null) {
             savePersonAttributes();
+        }
+
+        try {
+            patientService.savePatient(this.patient);
 
             try {
-                patientService.savePatient(this.patient);
-
-                try {
-                    saveHivTestData();
-                    //checkinPatient();
-                    msg = "Successfully saved all Hiv Test Data";
-                } catch (Exception ex) {
-                    msg = "There was an error processing patient HIV tests";
-                }
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                msg = "There was an error processing patient SHR";
+                //saveHivTestData();
+                //checkinPatient();
+                msg = "Successfully saved P-Smart HIV Test Data";
+            } catch (Exception ex) {
+                msg = "There was an error processing P-Smart HIV Test Data";
             }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            msg = "There was an error processing patient SHR";
+        }
 
         //}
 
         return msg;
+    }
+
+    public String patientExists() {
+        return checkIfPatientExists() != null ? checkIfPatientExists().getGivenName().concat(" ").concat(checkIfPatientExists().getFamilyName()) : "Client doesn't exist in the system";
     }
 
     private void checkinPatient() {
@@ -131,11 +143,11 @@ public class IncomingPatientSHR {
     public String assignCardSerialIdentifier(String identifier, String encryptedSHR) {
         PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
 
-        if(identifier != null) {
+        if (identifier != null) {
 
             // check if no other patient has same identifier
             List<Patient> patientsAssignedId = patientService.getPatients(null, identifier.trim(), Arrays.asList(SMART_CARD_SERIAL_NUMBER_TYPE), false);
-            if(patientsAssignedId.size() > 0) {
+            if (patientsAssignedId.size() > 0) {
                 return "Identifier already assigned";
             }
 
@@ -143,7 +155,7 @@ public class IncomingPatientSHR {
             List<PatientIdentifier> existingIdentifiers = patient.getPatientIdentifiers(SMART_CARD_SERIAL_NUMBER_TYPE);
 
             boolean found = false;
-            for(PatientIdentifier id : existingIdentifiers) {
+            for (PatientIdentifier id : existingIdentifiers) {
                 if (id.getIdentifier().equals(identifier.trim())) {
                     found = true;
                     return "Client already assigned the card serial";
@@ -151,7 +163,7 @@ public class IncomingPatientSHR {
             }
 
 
-            if(!found) {
+            if (!found) {
                 PatientIdentifier patientIdentifier = new PatientIdentifier();
                 patientIdentifier.setIdentifierType(SMART_CARD_SERIAL_NUMBER_TYPE);
                 patientIdentifier.setLocation(Utils.getDefaultLocation());
@@ -165,7 +177,7 @@ public class IncomingPatientSHR {
         return "No identifier provided";
     }
 
-    public Patient patientExists() {
+    public Patient checkIfPatientExists() {
 
         PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
         PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
@@ -174,15 +186,142 @@ public class IncomingPatientSHR {
         PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
         PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
 
-        String shrGodsNumber =SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
+        String shrGodsNumber = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
         List<Patient> patientsAssignedGodsNumber = patientService.getPatients(null, shrGodsNumber.trim(), Arrays.asList(GODS_NUMBER_TYPE), false);
-        if(patientsAssignedGodsNumber.size() > 0) {
+        if (patientsAssignedGodsNumber.size() > 0) {
             return patientsAssignedGodsNumber.get(0);
         }
 
-        for (int x = 0; x<SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID.length;x++) {
+        for (int x = 0; x < SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID.length; x++) {
 
             String idType = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iDENTIFIER_TYPE;
+            PatientIdentifierType identifierType = null;
+
+            String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iD;
+
+            if (idType.equals("ANC_NUMBER")) {
+                // get patient with the identifier
+
+                List<Obs> obs = obsService.getObservations(
+                        null,
+                        null,
+                        Arrays.asList(conceptService.getConceptByUuid(ANC_NUMBER)),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false
+                );
+                for (Obs ancNo : obs) {
+                    if (ancNo.getValueText().equals(identifier.trim()))
+                        return (Patient) ancNo.getPerson();
+                }
+
+            } else {
+                if (idType.equals("HEI_NUMBER")) {
+                    identifierType = HEI_NUMBER_TYPE;
+                } else if (idType.equals("CCC_NUMBER")) {
+                    identifierType = CCC_NUMBER_TYPE;
+                } else if (idType.equals("NATIONAL_ID")) {
+                    identifierType = NATIONAL_ID_TYPE;
+                } else if (idType.equals("CARD_SERIAL_NUMBER")) {
+                    identifierType = SMART_CARD_SERIAL_NUMBER_TYPE;
+                } else if (idType.equals("HTS_NUMBER")) {
+                    identifierType = HTS_NUMBER_TYPE;
+                }
+
+                List<Patient> patientsAlreadyAssigned = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
+                if (patientsAlreadyAssigned.size() > 0) {
+                    return patientsAlreadyAssigned.get(0);
+                }
+            }
+
+        }
+
+
+        return null;
+    }
+
+    public boolean checkIfPatientHasIdentifier(Patient patient, PatientIdentifierType identifierType, String identifier) {
+
+        List<Patient> patientsWithIdentifierList = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
+        if (patientsWithIdentifierList.size() > 0) {
+            return patientsWithIdentifierList.get(0).equals(patient);
+        }
+
+        return false;
+    }
+
+    private void createOrUpdatePatient() {
+
+        String fName = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_NAME.fIRST_NAME;
+        String mName = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_NAME.mIDDLE_NAME;
+        String lName = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_NAME.lAST_NAME;
+        String dobString = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.dATE_OF_BIRTH;
+        String dobPrecision = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.dATE_OF_BIRTH_PRECISION;
+        Date dob = null;
+        try {
+            dob = new SimpleDateFormat("yyyyMMdd").parse(dobString);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        String gender = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.sEX;
+
+        this.patient = new Patient();
+        this.patient.setGender(gender);
+        this.patient.addName(new PersonName(fName, mName, lName));
+        if (dob != null) {
+            this.patient.setBirthdate(dob);
+        }
+
+        if (dobPrecision != null && dobPrecision.equals("ESTIMATED")) {
+            this.patient.setBirthdateEstimated(true);
+        } else if (dobPrecision != null && dobPrecision.equals("EXACT")) {
+            this.patient.setBirthdateEstimated(false);
+        }
+
+    }
+
+    private void addOpenMRSIdentifier() {
+        PatientIdentifier openMRSID = generateOpenMRSID();
+        patient.addIdentifier(openMRSID);
+    }
+
+    private void addOtherPatientIdentifiers() {
+
+        PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
+        PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
+        PatientIdentifierType NATIONAL_ID_TYPE = patientService.getPatientIdentifierTypeByUuid(NATIONAL_ID);
+        PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
+        PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
+        PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
+
+        // extract GOD's Number
+        String shrGodsNumber = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
+        if (shrGodsNumber != null) {
+            if(!checkIfPatientHasIdentifier(this.patient, GODS_NUMBER_TYPE, shrGodsNumber.trim())) {
+                String godsNumberAssigningFacility = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.aSSIGNING_FACILITY;
+                PatientIdentifier godsNumber = new PatientIdentifier();
+                godsNumber.setIdentifierType(GODS_NUMBER_TYPE);
+                godsNumber.setIdentifier(shrGodsNumber);
+                godsNumber.setLocation(Utils.getDefaultLocation());
+                //godsNumber.setLocation(new Location(Integer.parseInt(godsNumberAssigningFacility)));
+                patient.addIdentifier(godsNumber);
+            }
+
+        }
+
+        // process internal identifiers
+        PatientIdentifier lastIdentifier = null;
+
+        for (int x = 0; x < SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID.length; x++) {
+
+            String idType = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iDENTIFIER_TYPE;
+
             PatientIdentifierType identifierType = null;
 
             String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iD;
@@ -210,133 +349,47 @@ public class IncomingPatientSHR {
                     identifierType = HTS_NUMBER_TYPE;
                 }
 
-                List<Patient> patientsAlreadyAssigned = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
-                if(patientsAlreadyAssigned.size() > 0) {
-                    return patientsAlreadyAssigned.get(0);
+                if(!checkIfPatientHasIdentifier(this.patient, identifierType, identifier)) {
+                    PatientIdentifier patientIdentifier = new PatientIdentifier();
+                    String assigningFacility = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].aSSIGNING_FACILITY;
+                    patientIdentifier.setIdentifierType(identifierType);
+                    patientIdentifier.setIdentifier(identifier);
+                    patientIdentifier.setLocation(Utils.getDefaultLocation());
+
+                    //identifierSet.add(patientIdentifier);
+                    patient.addIdentifier(patientIdentifier);
+                    lastIdentifier = patientIdentifier;
                 }
             }
 
         }
-
-
-        return null;
-    }
-
-    private void createOrUpdatePatient () {
-
-        String fName = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_NAME.fIRST_NAME;
-        String mName = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_NAME.mIDDLE_NAME;
-        String lName = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_NAME.lAST_NAME;
-        String dobString   = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.dATE_OF_BIRTH;
-        String dobPrecision   = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.dATE_OF_BIRTH_PRECISION;
-        Date dob = null;
-        try {
-            dob   = new SimpleDateFormat("yyyyMMdd").parse(dobString);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        String gender =SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.sEX;
-
-        //Patient existingPatient = patientExists();
-
-/*        if(existingPatient != null) {
-            this.patient = existingPatient;
-        } else {*/
-
-            this.patient = new Patient();
-            this.patient.setGender(gender);
-            this.patient.addName(new PersonName(fName, mName, lName));
-            if (dob != null) {
-                this.patient.setBirthdate(dob);
-            }
-
-            if (dobPrecision != null && dobPrecision.equals("ESTIMATED")) {
-                this.patient.setBirthdateEstimated(true);
-            } else if (dobPrecision != null && dobPrecision.equals("EXACT")) {
-                this.patient.setBirthdateEstimated(false);
-            }
-       // }
-        //patientService.savePatient(this.patient);
-
-    }
-
-    private void savePatientIdentifiers () {
-
-        PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
-        PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
-        PatientIdentifierType NATIONAL_ID_TYPE = patientService.getPatientIdentifierTypeByUuid(NATIONAL_ID);
-        PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
-        PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
-        PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
-
-        PatientIdentifier openMRSID = generateOpenMRSID();
-        //openMRSID.setPreferred(true);
-        identifierSet.add(openMRSID);
-        // extract GOD's Number
-        String shrGodsNumber =SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
-        if (shrGodsNumber != null) {
-            String godsNumberAssigningFacility = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.aSSIGNING_FACILITY;
-            PatientIdentifier godsNumber = new PatientIdentifier();
-            godsNumber.setIdentifierType(GODS_NUMBER_TYPE);
-            godsNumber.setIdentifier(shrGodsNumber);
-            godsNumber.setLocation(Utils.getDefaultLocation());
-            //godsNumber.setLocation(new Location(Integer.parseInt(godsNumberAssigningFacility)));
-            identifierSet.add(godsNumber);
-        }
-
-        // process internal identifiers
-
-        for (int x = 0; x<SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID.length;x++) {
-
-            String idType = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iDENTIFIER_TYPE;
-            PatientIdentifier patientIdentifier = new PatientIdentifier();
-            PatientIdentifierType identifierType = null;
-
-            String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iD;
-
-            if (idType.equals("ANC_NUMBER")) {
-               // first save patient
-               /* patientService.savePatient(this.patient);
-                Obs ancNumberObs = new Obs();
-                ancNumberObs.setConcept(conceptService.getConceptByUuid(ANC_NUMBER));
-                ancNumberObs.setValueText(identifier);
-                ancNumberObs.setPerson(this.patient);
-                ancNumberObs.setObsDatetime(new Date());
-                obsService.saveObs(ancNumberObs, null);*/
-
-            } else {
-                if (idType.equals("HEI_NUMBER")) {
-                    identifierType = HEI_NUMBER_TYPE;
-                } else if (idType.equals("CCC_NUMBER")) {
-                    identifierType = CCC_NUMBER_TYPE;
-                } else if (idType.equals("NATIONAL_ID")) {
-                    identifierType = NATIONAL_ID_TYPE;
-                } else if (idType.equals("CARD_SERIAL_NUMBER")) {
-                    identifierType = SMART_CARD_SERIAL_NUMBER_TYPE;
-                } else if (idType.equals("HTS_NUMBER")) {
-                    identifierType = HTS_NUMBER_TYPE;
+        Iterator<PatientIdentifier> pIdentifiers = patient.getIdentifiers().iterator();
+        PatientIdentifier currentIdentifier = null;
+        PatientIdentifier preferredIdentifier = null;
+        while (pIdentifiers.hasNext()) {
+            currentIdentifier = pIdentifiers.next();
+            if (currentIdentifier.isPreferred()) {
+                if (preferredIdentifier != null) { // if there's a preferred address already exists, make it preferred=false
+                    preferredIdentifier.setPreferred(false);
                 }
-
-                String assigningFacility = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].aSSIGNING_FACILITY;
-                patientIdentifier.setIdentifierType(identifierType);
-                patientIdentifier.setIdentifier(identifier);
-                patientIdentifier.setLocation(Utils.getDefaultLocation());
-                if (x ==0) {
-                    patientIdentifier.setPreferred(true);
-                }
-                identifierSet.add(patientIdentifier);
+                preferredIdentifier = currentIdentifier;
             }
-
+        }
+        if ((preferredIdentifier == null) && (currentIdentifier != null)) { // No preferred address. Make the last address entry as preferred.
+            currentIdentifier.setPreferred(true);
         }
 
-        if (!identifierSet.isEmpty()) {
-            patient.setIdentifiers(identifierSet);
-            //patientService.savePatient(this.patient);
-        }
+        addOpenMRSIdentifier();
+
+        /*if (!identifierSet.isEmpty()) {
+            patient.getIdentifiers().retainAll(patient.getIdentifiers());
+            patient.getIdentifiers().addAll(identifierSet);
+            //patient.setIdentifiers(identifierSet);
+        }*/
 
     }
 
-    Concept testTypeConverter (String key) {
+    Concept testTypeConverter(String key) {
         Map<String, Concept> testTypeList = new HashMap<String, Concept>();
         testTypeList.put("SCREENING", conceptService.getConcept(162080));
         testTypeList.put("CONFIRMATORY", conceptService.getConcept(162082));
@@ -344,7 +397,7 @@ public class IncomingPatientSHR {
 
     }
 
-    Concept hivStatusConverter (String key) {
+    Concept hivStatusConverter(String key) {
         Map<String, Concept> hivStatusList = new HashMap<String, Concept>();
         hivStatusList.put("POSITIVE", conceptService.getConcept(703));
         hivStatusList.put("NEGATIVE", conceptService.getConcept(664));
@@ -352,7 +405,7 @@ public class IncomingPatientSHR {
         return hivStatusList.get(key);
     }
 
-    Concept testStrategyConverter (String key) {
+    Concept testStrategyConverter(String key) {
         Map<String, Concept> hivTestStrategyList = new HashMap<String, Concept>();
         hivTestStrategyList.put("HP", conceptService.getConcept(164163));
         hivTestStrategyList.put("NP", conceptService.getConcept(164953));
@@ -363,20 +416,36 @@ public class IncomingPatientSHR {
         return hivTestStrategyList.get(key);
     }
 
-    private void savePersonAttributes () {
-        String tELEPHONE= SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pHONE_NUMBER;
-        PersonAttributeType phoneNumberAttrType = personService.getPersonAttributeTypeByUuid(TELEPHONE_CONTACT);
-        Set<PersonAttribute> attributes = new TreeSet<PersonAttribute>();
+    private void savePersonAttributes() {
+        String tELEPHONE = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pHONE_NUMBER;
+        PersonAttributeType type = personService.getPersonAttributeTypeByUuid(TELEPHONE_CONTACT);
         if (tELEPHONE != null) {
-            PersonAttribute phoneContact = new PersonAttribute();
-            phoneContact.setAttributeType(phoneNumberAttrType);
-            phoneContact.setValue(tELEPHONE);
-            attributes.add(phoneContact);
+            PersonAttribute attribute = new PersonAttribute(type, tELEPHONE);
+
+            try {
+                Object hydratedObject = attribute.getHydratedObject();
+                if (hydratedObject == null || "".equals(hydratedObject.toString())) {
+                    // if null is returned, the value should be blanked out
+                    attribute.setValue("");
+                } else if (hydratedObject instanceof Attributable) {
+                    attribute.setValue(((Attributable) hydratedObject).serialize());
+                } else if (!hydratedObject.getClass().getName().equals(type.getFormat())) {
+                    // if the classes doesn't match the format, the hydration failed somehow
+                    // TODO change the PersonAttribute.getHydratedObject() to not swallow all errors?
+                    throw new APIException();
+                }
+            }
+            catch (APIException e) {
+                //.warn("Got an invalid value: " + value + " while setting personAttributeType id #" + paramName, e);
+                // setting the value to empty so that the user can reset the value to something else
+                attribute.setValue("");
+            }
+            patient.addAttribute(attribute);
         }
-        patient.setAttributes(attributes);
+
     }
 
-    private void savePersonAddresses () {
+    private void savePersonAddresses() {
         /**
          * county: personAddress.country
          * sub-county: personAddress.stateProvince
@@ -385,55 +454,51 @@ public class IncomingPatientSHR {
          * postal address: personAddress.address1
          */
 
-        String postaladdress =SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_ADDRESS.pOSTAL_ADDRESS;
+        String postaladdress = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_ADDRESS.pOSTAL_ADDRESS;
         String vILLAGE = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_ADDRESS.pHYSICAL_ADDRESS.vILLAGE;
         String wARD = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_ADDRESS.pHYSICAL_ADDRESS.wARD;
         String sUBCOUNTY = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_ADDRESS.pHYSICAL_ADDRESS.sUB_COUNTY;
         String cOUNTY = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_ADDRESS.pHYSICAL_ADDRESS.cOUNTY;
         String nEAREST_LANDMARK = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_ADDRESS.pHYSICAL_ADDRESS.nEAREST_LANDMARK;
 
-        PersonAddress address = new PersonAddress();
-        if (cOUNTY != null) {
-            address.setCountry(cOUNTY);
+        Set<PersonAddress> patientAddress = patient.getAddresses();
+        //Set<PersonAddress> patientAddress = new TreeSet<PersonAddress>();
+        for (PersonAddress address : patientAddress) {
+            if (cOUNTY !=null) {
+                address.setCountry(cOUNTY);
+            } else if (sUBCOUNTY != null) {
+                address.setStateProvince(sUBCOUNTY);
+            } else if (wARD != null) {
+                address.setAddress4(wARD);
+            } else if (nEAREST_LANDMARK != null) {
+                address.setAddress2(nEAREST_LANDMARK);
+            } else if (vILLAGE != null) {
+                address.setAddress2(vILLAGE);
+            } else if(postaladdress != null) {
+                address.setAddress1(postaladdress);
+            }
+            patient.addAddress(address);
+            /*patientAddress.add(address);*/
         }
 
-        if (sUBCOUNTY != null) {
-            address.setStateProvince(sUBCOUNTY);
-        }
+        /*if(patientAddress.size() != 0) {
+            patient.setAddresses(patientAddress);
+        }*/
 
-        if (wARD != null) {
-            address.setAddress4(wARD);
-        }
-
-        if (nEAREST_LANDMARK != null) {
-            address.setAddress2(nEAREST_LANDMARK);
-        }
-
-        if (postaladdress != null) {
-            address.setAddress1(postaladdress);
-        }
-
-        if (vILLAGE != null) {
-            address.setCityVillage(vILLAGE);
-        }
-        Set<PersonAddress> thisAddress = new TreeSet<PersonAddress>();
-        thisAddress.add(address);
-        patient.setAddresses(thisAddress);
     }
 
 
-
-    private void saveHivTestData () {
+    private void saveHivTestData() {
 
         Integer finalHivTestResultConcept = 159427;
-        Integer	testTypeConcept = 162084;
+        Integer testTypeConcept = 162084;
         Integer testStrategyConcept = 164956;
         Integer healthProviderConcept = 1473;
         Integer healthFacilityNameConcept = 162724;
         Integer healthProviderIdentifierConcept = 163161;
 
 
-        for (int i = 0; i<SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length;i++){
+        for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length; i++) {
 
             String dateStr = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].dATE;
             String result = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].rESULT;
@@ -445,10 +510,9 @@ public class IncomingPatientSHR {
 
             Date date = null;
 
-            try{
+            try {
                 date = new SimpleDateFormat("yyyyMMdd").parse(dateStr);
-            }
-            catch(ParseException ex){
+            } catch (ParseException ex) {
 
                 ex.printStackTrace();
             }
@@ -545,9 +609,9 @@ public class IncomingPatientSHR {
 
         // organize data according to date
         Map<Date, List<ImmunizationWrapper>> organizedImmunizations = new HashMap<Date, List<ImmunizationWrapper>>();
-        for(ImmunizationWrapper immunization : data) {
+        for (ImmunizationWrapper immunization : data) {
             Date vaccineDate = immunization.getVaccineDate();
-            if(organizedImmunizations.containsKey(vaccineDate)) {
+            if (organizedImmunizations.containsKey(vaccineDate)) {
                 organizedImmunizations.get(vaccineDate).add(immunization);
             } else {
                 organizedImmunizations.put(vaccineDate, Arrays.asList(immunization));
@@ -555,7 +619,7 @@ public class IncomingPatientSHR {
         }
 
         // loop through different dates
-        for(Date immunizationDate : organizedImmunizations.keySet()) {
+        for (Date immunizationDate : organizedImmunizations.keySet()) {
 
             List<ImmunizationWrapper> immunizationList = organizedImmunizations.get(immunizationDate);
             // build encounter
@@ -569,7 +633,7 @@ public class IncomingPatientSHR {
             enc.setForm(pSmartImmunizationForm);
 
             // build obs and add to encounter
-            for(ImmunizationWrapper entry : immunizationList) {
+            for (ImmunizationWrapper entry : immunizationList) {
                 Set<Obs> obs = createImmunizationObs(entry);
                 enc.setObs(obs);
             }
@@ -582,7 +646,7 @@ public class IncomingPatientSHR {
     private Set<Obs> createImmunizationObs(ImmunizationWrapper entry) {
 
         Concept groupingConcept = conceptService.getConcept(1421);
-        Concept	vaccineConcept = conceptService.getConcept(984);
+        Concept vaccineConcept = conceptService.getConcept(984);
         Concept sequenceNumber = conceptService.getConcept(1418);
         Set<Obs> immunizationObs = new HashSet<Obs>();
 
@@ -600,7 +664,7 @@ public class IncomingPatientSHR {
 
         immunizationObs.addAll(Arrays.asList(obsGroup, immunization));
 
-        if(entry.getSequenceNumber() != null) {
+        if (entry.getSequenceNumber() != null) {
             Obs immunizationSequenceNumber = new Obs();
             immunizationSequenceNumber.setConcept(sequenceNumber);
             immunizationSequenceNumber.setValueNumeric(Double.valueOf(entry.getSequenceNumber()));
@@ -614,7 +678,7 @@ public class IncomingPatientSHR {
     }
 
 
-    private List<ImmunizationWrapper> processImmunizationData () {
+    private List<ImmunizationWrapper> processImmunizationData() {
 
         Concept BCG = conceptService.getConcept(886);
         Concept OPV = conceptService.getConcept(783);
@@ -627,15 +691,14 @@ public class IncomingPatientSHR {
         Concept YELLOW_FEVER = conceptService.getConcept(5864);
 
         List<ImmunizationWrapper> shrData = new ArrayList<ImmunizationWrapper>();
-        for (int i = 0; i< SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION.length;i++){
+        for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION.length; i++) {
 
             String name = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].nAME;
             String dateAministered = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].dATE_ADMINISTERED;
             Date date = null;
-            try{
+            try {
                 date = new SimpleDateFormat("yyyyMMdd").parse(dateAministered);
-            }
-            catch(ParseException ex){
+            } catch (ParseException ex) {
 
                 ex.printStackTrace();
             }
@@ -698,15 +761,18 @@ public class IncomingPatientSHR {
         String NEXT_OF_KIN_NAME = "830bef6d-b01f-449d-9f8d-ac0fede8dbd3";
         String NEXT_OF_KIN_RELATIONSHIP = "d0aa9fd1-2ac5-45d8-9c5e-4317c622c8f5";
         Set<PersonAttribute> attributes = new TreeSet<PersonAttribute>();
-        if(SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN != null && SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN.length > 0){
+        if (SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN != null && SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN.length > 0) {
             PersonAttributeType nextOfKinNameAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_NAME);
             PersonAttributeType nextOfKinAddressAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_ADDRESS);
             PersonAttributeType nextOfKinPhoneContactAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_CONTACT);
             PersonAttributeType nextOfKinRelationshipAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_RELATIONSHIP);
 
-            String nextOfKinName = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.fIRST_NAME + " "+
-                    SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.mIDDLE_NAME + " "+
-                    SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.lAST_NAME ;
+            String nextOfKinName = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.fIRST_NAME.concat(
+                    SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.mIDDLE_NAME != "" ? SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.mIDDLE_NAME : ""
+            ).concat(
+                    SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.lAST_NAME != "" ? SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.lAST_NAME : ""
+            );
+
             String nextOfKinAddress = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].aDDRESS;
             String nextOfKinPhoneContact = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].pHONE_NUMBER;
             String nextOfKinRelationship = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].rELATIONSHIP;
@@ -742,16 +808,15 @@ public class IncomingPatientSHR {
         }
 
 
-
     }
 
     private void saveMotherDetails() {
 
     }
 
-    private void saveObsData () {
+    private void saveObsData() {
 
-        String cIVIL_STATUS=SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mARITAL_STATUS;
+        String cIVIL_STATUS = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mARITAL_STATUS;
         if (cIVIL_STATUS != null) {
 
         }
