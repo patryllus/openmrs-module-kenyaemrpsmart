@@ -484,26 +484,49 @@ public class IncomingPatientSHR {
 
         Set<PersonAddress> patientAddress = patient.getAddresses();
         //Set<PersonAddress> patientAddress = new TreeSet<PersonAddress>();
-        for (PersonAddress address : patientAddress) {
-            if (cOUNTY !=null) {
-                address.setCountry(cOUNTY);
+        if(patientAddress.size() > 0) {
+            for (PersonAddress address : patientAddress) {
+                if (cOUNTY != null) {
+                    address.setCountry(cOUNTY);
+                }
+                if (sUBCOUNTY != null) {
+                    address.setStateProvince(sUBCOUNTY);
+                }
+                if (wARD != null) {
+                    address.setAddress4(wARD);
+                }
+                if (nEAREST_LANDMARK != null) {
+                    address.setAddress2(nEAREST_LANDMARK);
+                }
+                if (vILLAGE != null) {
+                    address.setAddress2(vILLAGE);
+                }
+                if (postaladdress != null) {
+                    address.setAddress1(postaladdress);
+                }
+                patient.addAddress(address);
+            }
+        } else {
+            PersonAddress pa = new PersonAddress();
+            if (cOUNTY != null) {
+                pa.setCountry(cOUNTY);
             }
             if (sUBCOUNTY != null) {
-                address.setStateProvince(sUBCOUNTY);
+                pa.setStateProvince(sUBCOUNTY);
             }
             if (wARD != null) {
-                address.setAddress4(wARD);
+                pa.setAddress4(wARD);
             }
             if (nEAREST_LANDMARK != null) {
-                address.setAddress2(nEAREST_LANDMARK);
+                pa.setAddress2(nEAREST_LANDMARK);
             }
             if (vILLAGE != null) {
-                address.setAddress2(vILLAGE);
+                pa.setAddress2(vILLAGE);
             }
-            if(postaladdress != null) {
-                address.setAddress1(postaladdress);
+            if (postaladdress != null) {
+                pa.setAddress1(postaladdress);
             }
-            patient.addAddress(address);
+            patient.addAddress(pa);
         }
 
     }
