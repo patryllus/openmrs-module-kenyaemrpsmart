@@ -115,11 +115,13 @@ public class IncomingPatientSHR {
             patientService.savePatient(this.patient);
 
             try {
-                saveHivTestData();
+                System.out.println("Skipping HIV tests for now");
+                //saveHivTestData();
                 try {
                     saveImmunizationData();
                     return "Successfully processed P-Smart Immunization data";
                 } catch (Exception e) {
+                    e.printStackTrace();
                     return "There was an error processing immunization data";
                 }
 
@@ -686,8 +688,9 @@ public class IncomingPatientSHR {
     }
 
     private void saveImmunizationData() {
-        //List<ImmunizationWrapper> immunizationData = processImmunizationData();
-        //saveImmunizationData(immunizationData);
+        List<ImmunizationWrapper> immunizationData = processImmunizationData();
+        System.out.println("Immunization data: size=" + immunizationData.size() + ", Data: " + immunizationData.toString());
+        saveImmunizationData(immunizationData);
     }
 
     private void saveImmunizationData(List<ImmunizationWrapper> data) {
@@ -696,40 +699,48 @@ public class IncomingPatientSHR {
         Form pSmartImmunizationForm = Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_IMMUNIZATION);
         //enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
 
+        System.out.println("Starting processing");
         // organize data according to date
         Map<Date, List<ImmunizationWrapper>> organizedImmunizations = new HashMap<Date, List<ImmunizationWrapper>>();
         for (ImmunizationWrapper immunization : data) {
+            System.out.println("Inside immunization loop " + immunization.getVaccineDate());
             Date vaccineDate = immunization.getVaccineDate();
-            if (organizedImmunizations.containsKey(vaccineDate)) {
-                organizedImmunizations.get(vaccineDate).add(immunization);
-            } else {
-                organizedImmunizations.put(vaccineDate, Arrays.asList(immunization));
+            if (!organizedImmunizations.containsKey(vaccineDate)) {
+                organizedImmunizations.put(vaccineDate, new ArrayList<ImmunizationWrapper>());
+
             }
+            organizedImmunizations.get(vaccineDate).add(immunization);
         }
 
-        // loop through different dates
-        for (Date immunizationDate : organizedImmunizations.keySet()) {
+        System.out.println("Immunization dates: size=" + organizedImmunizations.keySet().size());
 
-            List<ImmunizationWrapper> immunizationList = organizedImmunizations.get(immunizationDate);
+        // loop through different dates
+        //for (Date immunizationDate : organizedImmunizations.keySet()) {
+        for (Map.Entry<Date, List<ImmunizationWrapper>> entry : organizedImmunizations.entrySet()) {
+
+            Date key = entry.getKey();
+            List<ImmunizationWrapper> immunizationList = entry.getValue();
+
             // build encounter
             Encounter enc = new Encounter();
             Location location = Context.getLocationService().getLocation(1);
             enc.setLocation(location);
             enc.setEncounterType(pSmartDataEncType);
-            enc.setEncounterDatetime(immunizationDate);
+            enc.setEncounterDatetime(key);
             enc.setPatient(patient);
             enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
             enc.setForm(pSmartImmunizationForm);
 
             // build obs and add to encounter
-            for (ImmunizationWrapper entry : immunizationList) {
-                Set<Obs> obs = createImmunizationObs(entry);
+            for (ImmunizationWrapper iEntry : immunizationList) {
+                Set<Obs> obs = createImmunizationObs(iEntry);
                 enc.setObs(obs);
             }
-            encounterService.saveEncounter(enc);
+            System.out.println("Immunization date: " + key);
+            //encounterService.saveEncounter(enc);
 
         }
-        patientService.savePatient(patient);
+        //patientService.savePatient(patient);
 
     }
 
@@ -1001,7 +1012,6 @@ public class IncomingPatientSHR {
                 testStrategy = obs.getValueCoded();
             } else if(obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
                 testFacility = obs.getValueText();
-                System.out.println("Facility code found here: =========== converted: " + testFacility + ", Original :" + obs.getValueText());
             }
         }
         return new SmartCardHivTest(testResult, testFacility, testStrategy, testDate, testType);
