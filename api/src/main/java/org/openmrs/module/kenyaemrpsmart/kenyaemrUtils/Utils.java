@@ -11,6 +11,7 @@ import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.Person;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SmartCardHivTest;
 import org.openmrs.util.PrivilegeConstants;
 
 import java.util.Arrays;

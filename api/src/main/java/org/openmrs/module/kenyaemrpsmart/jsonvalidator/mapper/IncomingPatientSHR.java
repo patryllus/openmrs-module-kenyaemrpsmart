@@ -1,5 +1,9 @@
 package org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.openmrs.Attributable;
 import org.openmrs.Concept;
 import org.openmrs.Encounter;
@@ -14,6 +18,7 @@ import org.openmrs.PersonAddress;
 import org.openmrs.PersonAttribute;
 import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
+import org.openmrs.User;
 import org.openmrs.Visit;
 import org.openmrs.VisitType;
 import org.openmrs.api.APIException;
@@ -24,6 +29,7 @@ import org.openmrs.api.ObsService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
+import org.openmrs.logic.op.In;
 import org.openmrs.module.idgen.service.IdentifierSourceService;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
 import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
@@ -61,7 +67,10 @@ public class IncomingPatientSHR {
     String NATIONAL_ID = "49af6cdc-7968-4abb-bf46-de10d7f4859f";
     String UNIQUE_PATIENT_NUMBER = "05ee9cf4-7242-4a17-b4d4-00f707265c8a";
     String ANC_NUMBER = "161655AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    Set<PatientIdentifier> identifierSet = new HashSet<PatientIdentifier>();
+    String HTS_CONFIRMATORY_TEST_FORM_UUID = "b08471f6-0892-4bf7-ab2b-bf79797b8ea4";
+    String HTS_INITIAL_TEST_FORM_UUID = "402dc5d7-46da-42d4-b2be-f43ea4ad87b0";
+
+    protected Log logger = LogFactory.getLog(getClass());
 
 
     public IncomingPatientSHR(String shr) {
@@ -95,24 +104,26 @@ public class IncomingPatientSHR {
             this.patient = patient;
         } else {
             createOrUpdatePatient();
-            addOpenMRSIdentifier();
-            savePersonAddresses();
         }
 
         savePersonAddresses();
         savePersonAttributes();
         addOtherPatientIdentifiers();
-        if (patient == null) {
-            savePersonAttributes();
-        }
+
 
         try {
             patientService.savePatient(this.patient);
 
             try {
-                //saveHivTestData();
+                saveHivTestData();
+                try {
+                    saveImmunizationData();
+                    return "Successfully processed P-Smart Immunization data";
+                } catch (Exception e) {
+                    return "There was an error processing immunization data";
+                }
+
                 //checkinPatient();
-                msg = "Successfully saved P-Smart HIV Test Data";
             } catch (Exception ex) {
                 msg = "There was an error processing P-Smart HIV Test Data";
             }
@@ -315,15 +326,22 @@ public class IncomingPatientSHR {
 
         }
 
+        // OpenMRS ID
+        PatientIdentifierType openmrsIDType = Context.getPatientService().getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
+        PatientIdentifier existingIdentifier = patient.getPatientIdentifier(openmrsIDType);
+
+        if(existingIdentifier != null) {
+
+        } else {
+            addOpenMRSIdentifier();
+        }
+
         // process internal identifiers
-        PatientIdentifier lastIdentifier = null;
 
         for (int x = 0; x < SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID.length; x++) {
 
             String idType = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iDENTIFIER_TYPE;
-
             PatientIdentifierType identifierType = null;
-
             String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iD;
 
             if (idType.equals("ANC_NUMBER")) {
@@ -347,6 +365,8 @@ public class IncomingPatientSHR {
                     identifierType = SMART_CARD_SERIAL_NUMBER_TYPE;
                 } else if (idType.equals("HTS_NUMBER")) {
                     identifierType = HTS_NUMBER_TYPE;
+                } else {
+                    continue;
                 }
 
                 if(!checkIfPatientHasIdentifier(this.patient, identifierType, identifier)) {
@@ -358,7 +378,7 @@ public class IncomingPatientSHR {
 
                     //identifierSet.add(patientIdentifier);
                     patient.addIdentifier(patientIdentifier);
-                    lastIdentifier = patientIdentifier;
+
                 }
             }
 
@@ -379,13 +399,6 @@ public class IncomingPatientSHR {
             currentIdentifier.setPreferred(true);
         }
 
-        addOpenMRSIdentifier();
-
-        /*if (!identifierSet.isEmpty()) {
-            patient.getIdentifiers().retainAll(patient.getIdentifiers());
-            patient.getIdentifiers().addAll(identifierSet);
-            //patient.setIdentifiers(identifierSet);
-        }*/
 
     }
 
@@ -393,6 +406,14 @@ public class IncomingPatientSHR {
         Map<String, Concept> testTypeList = new HashMap<String, Concept>();
         testTypeList.put("SCREENING", conceptService.getConcept(162080));
         testTypeList.put("CONFIRMATORY", conceptService.getConcept(162082));
+        return testTypeList.get(key);
+
+    }
+
+    String testTypeToStringConverter(Concept key) {
+        Map<Concept, String> testTypeList = new HashMap<Concept, String>();
+        testTypeList.put(conceptService.getConcept(162080),"SCREENING");
+        testTypeList.put(conceptService.getConcept(162082), "CONFIRMATORY");
         return testTypeList.get(key);
 
     }
@@ -466,24 +487,24 @@ public class IncomingPatientSHR {
         for (PersonAddress address : patientAddress) {
             if (cOUNTY !=null) {
                 address.setCountry(cOUNTY);
-            } else if (sUBCOUNTY != null) {
+            }
+            if (sUBCOUNTY != null) {
                 address.setStateProvince(sUBCOUNTY);
-            } else if (wARD != null) {
+            }
+            if (wARD != null) {
                 address.setAddress4(wARD);
-            } else if (nEAREST_LANDMARK != null) {
+            }
+            if (nEAREST_LANDMARK != null) {
                 address.setAddress2(nEAREST_LANDMARK);
-            } else if (vILLAGE != null) {
+            }
+            if (vILLAGE != null) {
                 address.setAddress2(vILLAGE);
-            } else if(postaladdress != null) {
+            }
+            if(postaladdress != null) {
                 address.setAddress1(postaladdress);
             }
             patient.addAddress(address);
-            /*patientAddress.add(address);*/
         }
-
-        /*if(patientAddress.size() != 0) {
-            patient.setAddresses(patientAddress);
-        }*/
 
     }
 
@@ -497,7 +518,9 @@ public class IncomingPatientSHR {
         Integer healthFacilityNameConcept = 162724;
         Integer healthProviderIdentifierConcept = 163161;
 
-
+        SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
+        List<SmartCardHivTest> existingTests = getHivTests();
+        System.out.println("Fooooooooooooooooooooound: " + existingTests.size());
         for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length; i++) {
 
             String dateStr = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].dATE;
@@ -516,7 +539,44 @@ public class IncomingPatientSHR {
 
                 ex.printStackTrace();
             }
+            // skip all tests done in the facility
+            if(Integer.valueOf(facility) == 108900) {//temp value for this facility
+                continue;
+            }
 
+            boolean exists = false;
+            for(SmartCardHivTest hivTest : existingTests) {
+
+                System.out.println("Answers outside ==================== : \n Test Dates: db date: " +
+                        df.format(hivTest.getDateTested()) + ", incoming date: " + dateStr + " ,\n Test strategy: incoming: " +
+                        testStrategyConverter(strategy) + ", db strategy: " + hivTest.getStrategy() +",\n Type: db: " +
+                        hivTest.getType() + ", incoming: " + type +", \n results: " +
+                        hivStatusConverter(result) + ", facility:facility =" + Integer.valueOf(facility) + ": " + hivTest.getFacility());
+
+                System.out.println("Comparisons: \n"
+                + "facility code: " + (facility.equals(hivTest.getFacility())) + "\n "
+                + "test date:" + (dateStr.equals(df.format(hivTest.getDateTested()))) + "\n "
+                + "hiv status: " + (hivStatusConverter(result).equals(hivTest.getResult())) + "\n"
+                + "strategy: " + (testStrategyConverter(strategy).equals(hivTest.getStrategy())) + "\n"
+                + "type: " + (type.trim().equals(hivTest.getType())));
+
+                if(facility.equals(hivTest.getFacility())
+                        && dateStr.equals(df.format(hivTest.getDateTested()))
+                        && hivStatusConverter(result).equals(hivTest.getResult())
+                        && testStrategyConverter(strategy).equals(hivTest.getStrategy())
+                        && type.trim().equals(hivTest.getType())) {
+                    exists = true;
+
+                    System.out.println("Answers inside ==================== : " + hivTest.getDateTested() + " ," + testStrategyConverter(strategy) + ", " + hivStatusConverter(result));
+
+                    break;
+
+                }
+            }
+
+            if(exists) {
+                continue;
+            }
 
             Encounter enc = new Encounter();
             Location location = Context.getLocationService().getLocation(1);
@@ -599,6 +659,12 @@ public class IncomingPatientSHR {
             encounterService.saveEncounter(enc);
 
         }
+        patientService.savePatient(patient);
+    }
+
+    private void saveImmunizationData() {
+        //List<ImmunizationWrapper> immunizationData = processImmunizationData();
+        //saveImmunizationData(immunizationData);
     }
 
     private void saveImmunizationData(List<ImmunizationWrapper> data) {
@@ -640,6 +706,7 @@ public class IncomingPatientSHR {
             encounterService.saveEncounter(enc);
 
         }
+        patientService.savePatient(patient);
 
     }
 
@@ -828,8 +895,94 @@ public class IncomingPatientSHR {
     private PatientIdentifier generateOpenMRSID() {
         PatientIdentifierType openmrsIDType = Context.getPatientService().getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
         String generated = Context.getService(IdentifierSourceService.class).generateIdentifier(openmrsIDType, "Registration");
+        /*PatientIdentifier existingIdentifier = patient.getPatientIdentifier(openmrsIDType);
+        if(existingIdentifier != null) {
+            logger.info("Identifier exists");
+            System.out.println("Identifier exists");
+            return existingIdentifier;
+        }*/
         PatientIdentifier identifier = new PatientIdentifier(generated, openmrsIDType, Utils.getDefaultLocation());
+        logger.info("New identifier generated");
+        System.out.println("New identifier generated");
         return identifier;
+    }
+
+    private List<SmartCardHivTest> getHivTests() {
+
+        // test concepts
+        Concept finalHivTestResultConcept = conceptService.getConcept(159427);
+        Concept	testTypeConcept = conceptService.getConcept(162084);
+        Concept testStrategyConcept = conceptService.getConcept(164956);
+        Concept testFacilityCodeConcept = conceptService.getConcept(162724);
+
+
+
+
+        Form HTS_INITIAL_FORM = Context.getFormService().getFormByUuid(HTS_INITIAL_TEST_FORM_UUID);
+        Form HTS_CONFIRMATORY_FORM = Context.getFormService().getFormByUuid(HTS_CONFIRMATORY_TEST_FORM_UUID);
+
+        EncounterType smartCardHTSEntry = Context.getEncounterService().getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA);
+        Form SMART_CARD_HTS_FORM = Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_HIV_TEST);
+
+
+        List<Encounter> htsEncounters = Utils.getEncounters(patient, Arrays.asList(HTS_CONFIRMATORY_FORM, HTS_INITIAL_FORM));
+        List<Encounter> processedIncomingTests = Utils.getEncounters(patient, Arrays.asList(SMART_CARD_HTS_FORM));
+
+        List<SmartCardHivTest> testList = new ArrayList<SmartCardHivTest>();
+        // loop through encounters and extract hiv test information
+        for(Encounter encounter : htsEncounters) {
+            List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept));
+            testList.add(extractHivTestInformation(obs));
+        }
+
+        // append processed tests from card
+        for(Encounter encounter : processedIncomingTests) {
+            List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept, testFacilityCodeConcept));
+            testList.add(extractHivTestInformation(obs));
+        }
+
+        return testList;
+    }
+
+    private SmartCardHivTest extractHivTestInformation (List<Obs> obsList) {
+
+        Integer finalHivTestResultConcept = 159427;
+        Integer	testTypeConcept = 162084;
+        Integer testStrategyConcept = 164956;
+        Integer testFacilityCodeConcept = 162724;
+
+        Date testDate= obsList.get(0).getObsDatetime();
+        User provider = obsList.get(0).getCreator();
+        Concept testResult = null;
+        String testType = null;
+        String testFacility = null;
+        Concept testStrategy = null;
+
+        for(Obs obs:obsList) {
+
+            if(obs.getEncounter().getForm().getUuid().equals(HTS_CONFIRMATORY_TEST_FORM_UUID)) {
+                testType = "CONFIRMATORY";
+            } else if(obs.getEncounter().getForm().getUuid().equals(HTS_INITIAL_TEST_FORM_UUID)) {
+                testType = "INITIAL";
+            }
+
+            if (obs.getConcept().getConceptId().equals(testTypeConcept)) {
+                testType = testTypeToStringConverter(obs.getValueCoded());
+            }
+
+            if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept) ) {
+                testResult = obs.getValueCoded();
+            } /*else if (obs.getConcept().getConceptId().equals(testTypeConcept )) {
+                testType = testTypeConverter(obs.getValueCoded());
+            }*/ else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
+                testStrategy = obs.getValueCoded();
+            } else if(obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
+                testFacility = obs.getValueText();
+                System.out.println("Facility code found here: =========== converted: " + testFacility + ", Original :" + obs.getValueText());
+            }
+        }
+        return new SmartCardHivTest(testResult, testFacility, testStrategy, testDate, testType);
+
     }
 
 
