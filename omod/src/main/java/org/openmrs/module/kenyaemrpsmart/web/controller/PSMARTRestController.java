@@ -19,6 +19,7 @@ import org.apache.commons.logging.LogFactory;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.IncomingPatientSHR;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.MiddlewareRequest;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.PsmartAuthentication;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SmartCardEligibleList;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
 import org.openmrs.module.webservices.rest.SimpleObject;
@@ -142,6 +143,36 @@ public class PSMARTRestController extends BaseRestController {
 
 		IncomingPatientSHR shr = new IncomingPatientSHR(requestBody);
 		return shr.patientExists();
+	}
+
+	/**
+	 * Handle authentication
+	 * @param request
+	 * @return
+	 */
+	@RequestMapping(method = RequestMethod.POST, value = "/authenticateuser")
+	@ResponseBody
+	public Object userAuthentication(HttpServletRequest request) {
+		String requestBody = null;
+		String userName=null;
+		String pwd = null;
+		MiddlewareRequest thisRequest = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+
+		try {
+			thisRequest = new ObjectMapper().readValue(requestBody, MiddlewareRequest.class);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return new SimpleObject().add("ServerResponse", "Error parsing request body: " + requestBody);
+		}
+		userName = thisRequest.getUserName();
+		pwd = thisRequest.getPwd();
+
+		return PsmartAuthentication.authenticateUser(userName.trim(), pwd.trim()).toString();
 	}
 
 	/**

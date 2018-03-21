@@ -221,11 +221,14 @@ public class OutgoingPatientSHR {
             }
             if (address.getCountry() != null) {
                 county = address.getCountry() != null? address.getCountry(): "";
-            } else if (address.getStateProvince() != null) {
+            }
+            if (address.getStateProvince() != null) {
                 sub_county = address.getStateProvince() != null? address.getStateProvince(): "";
-            } else if (address.getAddress4() != null) {
+            }
+            if (address.getAddress4() != null) {
                 ward = address.getAddress4() != null? address.getAddress4(): "";
-            } else if (address.getAddress2() != null) {
+            }
+            if (address.getAddress2() != null) {
                 landMark =  address.getAddress2() != null? address.getAddress2(): "";
             }
 

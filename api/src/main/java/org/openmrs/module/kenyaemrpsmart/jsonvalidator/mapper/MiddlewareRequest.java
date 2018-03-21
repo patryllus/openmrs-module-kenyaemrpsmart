@@ -10,11 +10,15 @@ public class MiddlewareRequest {
 
     String patientID;
     String cardSerialNumber;
+    String userName;
+    String pwd;
 
     @JsonCreator
-    public MiddlewareRequest(@JsonProperty("PATIENTID") String patientID, @JsonProperty("CARD_SERIAL_NO") String cardSerialNumber) {
+    public MiddlewareRequest(@JsonProperty("PATIENTID") String patientID, @JsonProperty("CARD_SERIAL_NO") String cardSerialNumber, @JsonProperty("USERNAME") String userName, @JsonProperty("PASSWORD") String pwd) {
         this.patientID = patientID;
         this.cardSerialNumber = cardSerialNumber;
+        this.userName = userName;
+        this.pwd = pwd;
     }
 
     @JsonProperty("PATIENTID")
@@ -33,5 +37,23 @@ public class MiddlewareRequest {
 
     public void setCardSerialNumber(String cardSerialNumber) {
         this.cardSerialNumber = cardSerialNumber;
+    }
+
+    @JsonProperty("USERNAME")
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    @JsonProperty("PASSWORD")
+    public String getPwd() {
+        return pwd;
+    }
+
+    public void setPwd(String pwd) {
+        this.pwd = pwd;
     }
 }
