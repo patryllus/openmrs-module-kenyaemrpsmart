@@ -1,7 +1,5 @@
 package org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.Attributable;
@@ -29,7 +27,6 @@ import org.openmrs.api.ObsService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
-import org.openmrs.logic.op.In;
 import org.openmrs.module.idgen.service.IdentifierSourceService;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
 import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
@@ -69,6 +66,7 @@ public class IncomingPatientSHR {
     String ANC_NUMBER = "161655AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     String HTS_CONFIRMATORY_TEST_FORM_UUID = "b08471f6-0892-4bf7-ab2b-bf79797b8ea4";
     String HTS_INITIAL_TEST_FORM_UUID = "402dc5d7-46da-42d4-b2be-f43ea4ad87b0";
+    String IMMUNIZATION_FORM_UUID = "b4f3859e-861c-4a63-bdff-eb7392030d47";
 
     protected Log logger = LogFactory.getLog(getClass());
 
@@ -688,22 +686,35 @@ public class IncomingPatientSHR {
     }
 
     private void saveImmunizationData() {
-        List<ImmunizationWrapper> immunizationData = processImmunizationData();
-        System.out.println("Immunization data: size=" + immunizationData.size() + ", Data: " + immunizationData.toString());
-        saveImmunizationData(immunizationData);
+        List<ImmunizationWrapper> immunizationData = processImmunizationDataFromSHR();
+        List<ImmunizationWrapper> existingImmunizationData = getAllImmunizationDataFromDb();
+
+        outerLoop:
+        for(ImmunizationWrapper incoming : new HashSet<ImmunizationWrapper>(immunizationData)) {
+
+            innerLoop:
+            for(ImmunizationWrapper db : new HashSet<ImmunizationWrapper>(existingImmunizationData)) {
+
+                if(db.equals(incoming)) {
+                    immunizationData.remove(incoming);
+                   break innerLoop;
+                }
+            }
+        }
+
+        if(immunizationData.size() > 0) {
+            saveImmunizationData(immunizationData);
+        }
     }
 
     private void saveImmunizationData(List<ImmunizationWrapper> data) {
 
         EncounterType pSmartDataEncType = encounterService.getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA);
         Form pSmartImmunizationForm = Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_IMMUNIZATION);
-        //enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
 
-        System.out.println("Starting processing");
         // organize data according to date
         Map<Date, List<ImmunizationWrapper>> organizedImmunizations = new HashMap<Date, List<ImmunizationWrapper>>();
         for (ImmunizationWrapper immunization : data) {
-            System.out.println("Inside immunization loop " + immunization.getVaccineDate());
             Date vaccineDate = immunization.getVaccineDate();
             if (!organizedImmunizations.containsKey(vaccineDate)) {
                 organizedImmunizations.put(vaccineDate, new ArrayList<ImmunizationWrapper>());
@@ -712,10 +723,9 @@ public class IncomingPatientSHR {
             organizedImmunizations.get(vaccineDate).add(immunization);
         }
 
-        System.out.println("Immunization dates: size=" + organizedImmunizations.keySet().size());
 
         // loop through different dates
-        //for (Date immunizationDate : organizedImmunizations.keySet()) {
+
         for (Map.Entry<Date, List<ImmunizationWrapper>> entry : organizedImmunizations.entrySet()) {
 
             Date key = entry.getKey();
@@ -723,7 +733,7 @@ public class IncomingPatientSHR {
 
             // build encounter
             Encounter enc = new Encounter();
-            Location location = Context.getLocationService().getLocation(1);
+            Location location = Utils.getDefaultLocation();
             enc.setLocation(location);
             enc.setEncounterType(pSmartDataEncType);
             enc.setEncounterDatetime(key);
@@ -733,18 +743,18 @@ public class IncomingPatientSHR {
 
             // build obs and add to encounter
             for (ImmunizationWrapper iEntry : immunizationList) {
-                Set<Obs> obs = createImmunizationObs(iEntry);
+                Set<Obs> obs = createImmunizationObs(iEntry, enc);
                 enc.setObs(obs);
             }
-            System.out.println("Immunization date: " + key);
-            //encounterService.saveEncounter(enc);
+
+            encounterService.saveEncounter(enc);
 
         }
-        //patientService.savePatient(patient);
+        patientService.savePatient(patient);
 
     }
 
-    private Set<Obs> createImmunizationObs(ImmunizationWrapper entry) {
+    private Set<Obs> createImmunizationObs(ImmunizationWrapper entry, Encounter encounter) {
 
         Concept groupingConcept = conceptService.getConcept(1421);
         Concept vaccineConcept = conceptService.getConcept(984);
@@ -755,6 +765,7 @@ public class IncomingPatientSHR {
         obsGroup.setConcept(groupingConcept);
         obsGroup.setObsDatetime(entry.getVaccineDate());
         obsGroup.setPerson(patient);
+        obsGroup.setEncounter(encounter);
 
         Obs immunization = new Obs();
         immunization.setConcept(vaccineConcept);
@@ -762,6 +773,7 @@ public class IncomingPatientSHR {
         immunization.setObsDatetime(entry.getVaccineDate());
         immunization.setPerson(patient);
         immunization.setObsGroup(obsGroup);
+        immunization.setEncounter(encounter);
 
         immunizationObs.addAll(Arrays.asList(obsGroup, immunization));
 
@@ -771,15 +783,81 @@ public class IncomingPatientSHR {
             immunizationSequenceNumber.setValueNumeric(Double.valueOf(entry.getSequenceNumber()));
             immunizationSequenceNumber.setPerson(patient);
             immunizationSequenceNumber.setObsGroup(obsGroup);
+            immunizationSequenceNumber.setObsDatetime(entry.getVaccineDate());
+            immunizationSequenceNumber.setEncounter(encounter);
             immunizationObs.add(immunizationSequenceNumber);
+
         }
 
 
         return immunizationObs;
     }
 
+    private List<ImmunizationWrapper> getAllImmunizationDataFromDb() {
 
-    private List<ImmunizationWrapper> processImmunizationData() {
+        Concept groupingConcept = conceptService.getConcept(1421);
+        Concept	vaccineConcept = conceptService.getConcept(984);
+        Concept sequenceNumber = conceptService.getConcept(1418);
+        Form pSmartImmunizationForm = Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_IMMUNIZATION);
+
+
+        // get immunizations from immunization form
+        List<Encounter> immunizationEncounters = encounterService.getEncounters(
+                patient,
+                null,
+                null,
+                null,
+                Arrays.asList(Context.getFormService().getFormByUuid(IMMUNIZATION_FORM_UUID), pSmartImmunizationForm),
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+
+        List<ImmunizationWrapper> immunizationList = new ArrayList<ImmunizationWrapper>();
+        // extract blocks of vaccines organized by grouping concept
+        for(Encounter encounter : immunizationEncounters) {
+            List<Obs> obs = obsService.getObservations(
+                    Arrays.asList(Context.getPersonService().getPerson(patient.getPersonId())),
+                    Arrays.asList(encounter),
+                    Arrays.asList(groupingConcept),
+                    null,
+                    null,
+                    null,
+                    Arrays.asList("obsId"),
+                    null,
+                    null,
+                    null,
+                    null,
+                    false
+            );
+            // Iterate through groups
+            for(Obs group : obs) {
+                ImmunizationWrapper groupWrapper;
+                Concept vaccine = null;
+                Integer sequence = null;
+                Date vaccineDate = obs.get(0).getObsDatetime();
+                Set<Obs> members = group.getGroupMembers();
+                // iterate through obs for a particular group
+                for (Obs memberObs : members) {
+                    if (memberObs.getConcept().equals(vaccineConcept) ) {
+                        vaccine = memberObs.getValueCoded();
+                    } else if (memberObs.getConcept().equals(sequenceNumber)) {
+                        sequence = memberObs.getValueNumeric() != null? memberObs.getValueNumeric().intValue() : sequence;
+                    }
+                }
+                immunizationList.add(new ImmunizationWrapper(vaccine, sequence, vaccineDate));
+
+
+            }
+        }
+
+
+        return immunizationList;
+    }
+
+    private List<ImmunizationWrapper> processImmunizationDataFromSHR() {
 
         Concept BCG = conceptService.getConcept(886);
         Concept OPV = conceptService.getConcept(783);
@@ -1017,6 +1095,103 @@ public class IncomingPatientSHR {
         return new SmartCardHivTest(testResult, testFacility, testStrategy, testDate, testType);
 
     }
+
+    /**
+     * comparison with 1000 denote when a vaccine did not have sequence number documented as required
+     * @param wrapper
+     * @return node for a vaccine
+     *
+     */
+   /* ObjectNode vaccineConverterNode (ImmunizationWrapper wrapper) {
+
+        Concept BCG = conceptService.getConcept(886);
+        Concept OPV = conceptService.getConcept(783);
+        Concept IPV = conceptService.getConcept(1422);
+        Concept DPT = conceptService.getConcept(781);
+        Concept PCV = conceptService.getConcept(162342);
+        Concept ROTA = conceptService.getConcept(83531);
+        Concept MEASLESorRUBELLA = conceptService.getConcept(162586);
+        Concept MEASLES = conceptService.getConcept(36);
+        Concept YELLOW_FEVER = conceptService.getConcept(5864);
+
+        ObjectNode node = getJsonNodeFactory().objectNode();
+        if (wrapper.getVaccine().equals(BCG)) {
+            node.put("NAME","BCG");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 0) {
+            node.put("NAME","OPV_AT_BIRTH");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 1000) {
+            node.put("NAME","OPV");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 1) {
+            node.put("NAME","OPV1");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 2) {
+            node.put("NAME","OPV2");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 3) {
+            node.put("NAME","OPV3");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(IPV) && wrapper.getSequenceNumber() == 1000) {
+            node.put("NAME","IPV");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(IPV) && wrapper.getSequenceNumber() == 1) {
+            node.put("NAME","IPV");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 1000) {
+            node.put("NAME","DPT/Hep_B/Hib");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 1) {
+            node.put("NAME","DPT/Hep_B/Hib_1");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 2) {
+            node.put("NAME","DPT/Hep_B/Hib_2");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 3) {
+            node.put("NAME","DPT/Hep_B/Hib_3");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 1000) {
+            node.put("NAME","PCV10");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 1) {
+            node.put("NAME","PCV10-1");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 2) {
+            node.put("NAME","PCV10-2");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 3) {
+            node.put("NAME","PCV10-3");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 1000) {
+            node.put("NAME","ROTA");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 1) {
+            node.put("NAME","ROTA1");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 2) {
+            node.put("NAME","ROTA2");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(MEASLES) && (wrapper.getSequenceNumber() == 1 || wrapper.getSequenceNumber() == 1000)) {
+            node.put("NAME","MEASLES6");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 1000) {
+            node.put("NAME","MEASLES9");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 1) {
+            node.put("NAME","MEASLES9");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 2) {
+            node.put("NAME","MEASLES18");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        } else if (wrapper.getVaccine().equals(YELLOW_FEVER) && (wrapper.getSequenceNumber() == 1 || wrapper.getSequenceNumber() == 1000)) {
+            node.put("NAME","YELLOW_FEVER");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+        }
+
+        return node;
+    }
+*/
 
 
 }

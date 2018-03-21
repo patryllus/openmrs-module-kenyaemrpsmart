@@ -2,6 +2,7 @@ package org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper;
 
 import org.openmrs.Concept;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 class ImmunizationWrapper {
@@ -42,5 +43,14 @@ class ImmunizationWrapper {
         this.vaccineDate = vaccineDate;
     }
 
+    public boolean equals(Object obj) {
+
+        SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
+        if (obj == null) return false;
+        if (obj == this) return true;
+        if (!(obj instanceof ImmunizationWrapper)) return false;
+        ImmunizationWrapper o = (ImmunizationWrapper) obj;
+        return o.getVaccine().equals(this.getVaccine()) && df.format(o.getVaccineDate()).equals(df.format(this.getVaccineDate())) && o.getSequenceNumber() == this.getSequenceNumber();
+    }
 
 }
