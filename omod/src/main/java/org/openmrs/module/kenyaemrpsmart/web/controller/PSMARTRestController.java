@@ -25,6 +25,7 @@ import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -92,9 +93,12 @@ public class PSMARTRestController extends BaseRestController {
 
 	@RequestMapping(method = RequestMethod.GET, value = "/getshrusingcardserial/{cardSerialNo}")
 	@ResponseBody
-	public Object getShrUsingCardSerial(HttpServletRequest request) {
-		String serialNo = request.getParameter("cardSerialNo");
-		return new SimpleObject().add("serial", serialNo);
+	public Object getShrUsingCardSerial(HttpServletRequest request, @PathVariable("cardSerialNo") String cardSerialNo) {
+		if(cardSerialNo != null) {
+			OutgoingPatientSHR shr = new OutgoingPatientSHR(cardSerialNo);
+			return shr.patientIdentification().toString();
+		}
+		return null;
 	}
 
 	@RequestMapping(method = RequestMethod.POST, value = "/assigncardserialnumber")

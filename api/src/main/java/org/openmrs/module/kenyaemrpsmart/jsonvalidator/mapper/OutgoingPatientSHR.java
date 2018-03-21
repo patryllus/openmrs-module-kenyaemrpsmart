@@ -40,12 +40,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class OutgoingPatientSHR {
-   /* public SHR.PATIENT_IDENTIFICATION pATIENT_IDENTIFICATION;
-    public SHR.NEXT_OF_KIN nEXT_OF_KIN[];
-    public SHR.HIV_TEST hIV_TEST[];
-    public SHR.IMMUNIZATION iMMUNIZATION[];
-    public SHR.MERGE_PATIENT_INFORMATION mERGE_PATIENT_INFORMATION;
-    public SHR.CARD_DETAILS cARD_DETAILS;*/
+
    private Integer patientID;
    private Patient patient;
    private PersonService personService;
@@ -54,12 +49,17 @@ public class OutgoingPatientSHR {
    private ConceptService conceptService;
    private AdministrationService administrationService;
    private EncounterService encounterService;
+   private String patientIdentifier;
 
    String TELEPHONE_CONTACT = "b2c38640-2603-4629-aebd-3b54f33f1e3a";
    String CIVIL_STATUS_CONCEPT = "1054AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
    String IMMUNIZATION_FORM_UUID = "b4f3859e-861c-4a63-bdff-eb7392030d47";
     String HTS_INITIAL_TEST_FORM_UUID = "402dc5d7-46da-42d4-b2be-f43ea4ad87b0";
     String HTS_CONFIRMATORY_TEST_FORM_UUID = "b08471f6-0892-4bf7-ab2b-bf79797b8ea4";
+    String HEI_UNIQUE_NUMBER = "0691f522-dd67-4eeb-92c8-af5083baf338";
+    String NATIONAL_ID = "49af6cdc-7968-4abb-bf46-de10d7f4859f";
+    String UNIQUE_PATIENT_NUMBER = "05ee9cf4-7242-4a17-b4d4-00f707265c8a";
+    String ANC_NUMBER = "161655AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 
     public OutgoingPatientSHR(Integer patientID) {
@@ -72,6 +72,17 @@ public class OutgoingPatientSHR {
         this.administrationService = Context.getAdministrationService();
         this.conceptService = Context.getConceptService();
         this.encounterService = Context.getEncounterService();
+    }
+
+    public OutgoingPatientSHR(String patientIdentifier) {
+        this.patientIdentifier = patientIdentifier;
+        this.patientService = Context.getPatientService();
+        this.personService = Context.getPersonService();
+        this.obsService = Context.getObsService();
+        this.administrationService = Context.getAdministrationService();
+        this.conceptService = Context.getConceptService();
+        this.encounterService = Context.getEncounterService();
+        setPatientUsingIdentifier();
     }
 
     private JsonNodeFactory getJsonNodeFactory () {
@@ -101,6 +112,24 @@ public class OutgoingPatientSHR {
         return patient.getAttribute(phoneNumberAttrType) != null ? patient.getAttribute(phoneNumberAttrType).getValue(): "";
     }
 
+    public void setPatientUsingIdentifier() {
+
+        if(patientIdentifier != null) {
+            PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
+            PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
+            PatientIdentifierType NATIONAL_ID_TYPE = patientService.getPatientIdentifierTypeByUuid(NATIONAL_ID);
+            PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
+            PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
+            PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
+
+            List<Patient> patientsListWithIdentifier = patientService.getPatients(null, patientIdentifier.trim(),
+                    Arrays.asList(GODS_NUMBER_TYPE, HEI_NUMBER_TYPE, CCC_NUMBER_TYPE, NATIONAL_ID_TYPE, SMART_CARD_SERIAL_NUMBER_TYPE, HTS_NUMBER_TYPE, GODS_NUMBER_TYPE), false);
+            if (patientsListWithIdentifier.size() > 0) {
+                this.patient =  patientsListWithIdentifier.get(0);
+            }
+
+        }
+    }
     private ArrayNode getHivTests() {
 
         // test concepts
@@ -217,140 +246,142 @@ public class OutgoingPatientSHR {
 
     public ObjectNode patientIdentification () {
 
+        if(patient != null) {
 
-        String HEI_UNIQUE_NUMBER = "0691f522-dd67-4eeb-92c8-af5083baf338";
-        String NATIONAL_ID = "49af6cdc-7968-4abb-bf46-de10d7f4859f";
-        String UNIQUE_PATIENT_NUMBER = "05ee9cf4-7242-4a17-b4d4-00f707265c8a";
-        String ANC_NUMBER = "161655AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+            String HEI_UNIQUE_NUMBER = "0691f522-dd67-4eeb-92c8-af5083baf338";
+            String NATIONAL_ID = "49af6cdc-7968-4abb-bf46-de10d7f4859f";
+            String UNIQUE_PATIENT_NUMBER = "05ee9cf4-7242-4a17-b4d4-00f707265c8a";
+            String ANC_NUMBER = "161655AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-        PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
-        PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
-        PatientIdentifierType NATIONAL_ID_TYPE = patientService.getPatientIdentifierTypeByUuid(NATIONAL_ID);
-        PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
-        PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
-        PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
+            PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
+            PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
+            PatientIdentifierType NATIONAL_ID_TYPE = patientService.getPatientIdentifierTypeByUuid(NATIONAL_ID);
+            PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
+            PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
+            PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
 
 
+            List<PatientIdentifier> identifierList = patientService.getPatientIdentifiers(null, Arrays.asList(HEI_NUMBER_TYPE, CCC_NUMBER_TYPE, NATIONAL_ID_TYPE, SMART_CARD_SERIAL_NUMBER_TYPE, HTS_NUMBER_TYPE, GODS_NUMBER_TYPE), null, Arrays.asList(this.patient), null);
+            Map<String, String> patientIdentifiers = new HashMap<String, String>();
+            String facilityMFL = getFacilityMFL();
+            JsonNodeFactory factory = getJsonNodeFactory();
+            ObjectNode patientSHR = factory.objectNode();
+            ObjectNode patientIdentificationNode = factory.objectNode();
+            ArrayNode internalIdentifiers = factory.arrayNode();
+            ObjectNode externalIdentifiers = factory.objectNode();
 
-        List<PatientIdentifier> identifierList = patientService.getPatientIdentifiers(null, Arrays.asList(HEI_NUMBER_TYPE, CCC_NUMBER_TYPE, NATIONAL_ID_TYPE, SMART_CARD_SERIAL_NUMBER_TYPE, HTS_NUMBER_TYPE, GODS_NUMBER_TYPE), null, Arrays.asList(this.patient), null);
-        Map<String, String> patientIdentifiers = new HashMap<String, String>();
-        String facilityMFL = getFacilityMFL();
-        JsonNodeFactory factory = getJsonNodeFactory();
-        ObjectNode patientSHR = factory.objectNode();
-        ObjectNode patientIdentificationNode = factory.objectNode();
-        ArrayNode internalIdentifiers = factory.arrayNode();
-        ObjectNode externalIdentifiers = factory.objectNode();
+            for (PatientIdentifier identifier : identifierList) {
+                PatientIdentifierType identifierType = identifier.getIdentifierType();
+                ObjectNode element = factory.objectNode();
+                if (identifierType.equals(HEI_NUMBER_TYPE)) {
+                    patientIdentifiers.put("HEI_NUMBER", identifier.getIdentifier());
 
-        for (PatientIdentifier identifier: identifierList) {
-            PatientIdentifierType identifierType = identifier.getIdentifierType();
-            ObjectNode element = factory.objectNode();
-            if (identifierType.equals(HEI_NUMBER_TYPE)) {
-                patientIdentifiers.put("HEI_NUMBER", identifier.getIdentifier());
+                    element.put("ID", identifier.getIdentifier());
+                    element.put("IDENTIFIER_TYPE", "HEI_NUMBER");
+                    element.put("ASSIGNING_AUTHORITY", "MCH");
+                    element.put("ASSIGNING_FACILITY", facilityMFL);
 
-                element.put("ID", identifier.getIdentifier());
-                element.put("IDENTIFIER_TYPE", "HEI_NUMBER");
-                element.put("ASSIGNING_AUTHORITY", "MCH");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                } else if (identifierType.equals(CCC_NUMBER_TYPE)) {
+                    patientIdentifiers.put("CCC_NUMBER", identifier.getIdentifier());
+                    element.put("ID", identifier.getIdentifier());
+                    element.put("IDENTIFIER_TYPE", "CCC_NUMBER");
+                    element.put("ASSIGNING_AUTHORITY", "CCC");
+                    element.put("ASSIGNING_FACILITY", facilityMFL);
 
-            } else if (identifierType.equals(CCC_NUMBER_TYPE)) {
-                patientIdentifiers.put("CCC_NUMBER", identifier.getIdentifier());
-                element.put("ID", identifier.getIdentifier());
-                element.put("IDENTIFIER_TYPE", "CCC_NUMBER");
-                element.put("ASSIGNING_AUTHORITY", "CCC");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                } else if (identifierType.equals(NATIONAL_ID_TYPE)) {
+                    patientIdentifiers.put("NATIONAL_ID", identifier.getIdentifier());
+                    element.put("ID", identifier.getIdentifier());
+                    element.put("IDENTIFIER_TYPE", "NATIONAL_ID");
+                    element.put("ASSIGNING_AUTHORITY", "GOK");
+                    element.put("ASSIGNING_FACILITY", facilityMFL);
 
-            } else if (identifierType.equals(NATIONAL_ID_TYPE)) {
-                patientIdentifiers.put("NATIONAL_ID", identifier.getIdentifier());
-                element.put("ID", identifier.getIdentifier());
-                element.put("IDENTIFIER_TYPE", "NATIONAL_ID");
-                element.put("ASSIGNING_AUTHORITY", "GOK");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                } else if (identifierType.equals(SMART_CARD_SERIAL_NUMBER_TYPE)) {
+                    patientIdentifiers.put("CARD_SERIAL_NUMBER", identifier.getIdentifier());
+                    element.put("ID", identifier.getIdentifier());
+                    element.put("IDENTIFIER_TYPE", "CARD_SERIAL_NUMBER");
+                    element.put("ASSIGNING_AUTHORITY", "CARD_REGISTRY");
+                    element.put("ASSIGNING_FACILITY", facilityMFL);
 
-            } else if (identifierType.equals(SMART_CARD_SERIAL_NUMBER_TYPE)) {
-                patientIdentifiers.put("CARD_SERIAL_NUMBER", identifier.getIdentifier());
-                element.put("ID", identifier.getIdentifier());
-                element.put("IDENTIFIER_TYPE", "CARD_SERIAL_NUMBER");
-                element.put("ASSIGNING_AUTHORITY", "CARD_REGISTRY");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                } else if (identifierType.equals(HTS_NUMBER_TYPE)) {
+                    patientIdentifiers.put("HTS_NUMBER", identifier.getIdentifier());
+                    element.put("ID", identifier.getIdentifier());
+                    element.put("IDENTIFIER_TYPE", "HTS_NUMBER");
+                    element.put("ASSIGNING_AUTHORITY", "HTS");
+                    element.put("ASSIGNING_FACILITY", facilityMFL);
+                }
+                if(!element.isEmpty(null)) {
+                    internalIdentifiers.add(element);
+                }
+                if (identifierType.equals(GODS_NUMBER_TYPE)) {
+                    patientIdentifiers.put("GODS_NUMBER", identifier.getIdentifier());
+                    externalIdentifiers.put("ID", identifier.getIdentifier());
+                    externalIdentifiers.put("IDENTIFIER_TYPE", "GODS_NUMBER");
+                    externalIdentifiers.put("ASSIGNING_AUTHORITY", "MPI");
+                    externalIdentifiers.put("ASSIGNING_FACILITY", facilityMFL);
+                }
 
-            } else if (identifierType.equals(HTS_NUMBER_TYPE)) {
-                patientIdentifiers.put("HTS_NUMBER", identifier.getIdentifier());
-                element.put("ID", identifier.getIdentifier());
-                element.put("IDENTIFIER_TYPE", "HTS_NUMBER");
-                element.put("ASSIGNING_AUTHORITY", "HTS");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
             }
 
-            internalIdentifiers.add(element);
-
-            if (identifierType.equals(GODS_NUMBER_TYPE)) {
-                patientIdentifiers.put("GODS_NUMBER", identifier.getIdentifier());
-                externalIdentifiers.put("ID", identifier.getIdentifier());
-                externalIdentifiers.put("IDENTIFIER_TYPE", "GODS_NUMBER");
-                externalIdentifiers.put("ASSIGNING_AUTHORITY", "MPI");
-                externalIdentifiers.put("ASSIGNING_FACILITY", facilityMFL);
+            List<Obs> ancNumberObs = obsService.getObservationsByPersonAndConcept(patient, Context.getConceptService().getConceptByUuid(ANC_NUMBER));
+            Obs ancNumber = null;
+            if (ancNumberObs != null && !ancNumberObs.isEmpty())
+                ancNumber = ancNumberObs.get(0);
+            if (ancNumber != null) {
+                ObjectNode element = factory.objectNode();
+                patientIdentifiers.put("ANC_NUMBER", ancNumber.getValueText());
+                element.put("ID", ancNumber.getValueText());
+                element.put("IDENTIFIER_TYPE", "ANC_NUMBER");
+                element.put("ASSIGNING_AUTHORITY", "ANC");
+                element.put("ASSIGNING_FACILITY", facilityMFL);
+                internalIdentifiers.add(element);
             }
 
+            // get other patient details
+
+            String dob = getSimpleDateFormat(getSHRDateFormat()).format(this.patient.getBirthdate());
+            String dobPrecision = patient.getBirthdateEstimated() ? "ESTIMATED" : "EXACT";
+            String sex = patient.getGender();
+
+            // get death details
+            String deathDate;
+            String deathIndicator;
+            if (patient.getDeathDate() != null) {
+                deathDate = getSimpleDateFormat(getSHRDateFormat()).format(patient.getDeathDate());
+                deathIndicator = "Y";
+            } else {
+                deathDate = "";
+                deathIndicator = "N";
+            }
+
+
+            patientIdentificationNode.put("INTERNAL_PATIENT_ID", internalIdentifiers);
+            patientIdentificationNode.put("EXTERNAL_PATIENT_ID", externalIdentifiers);
+            patientIdentificationNode.put("PATIENT_NAME", getPatientName());
+            patientIdentificationNode.put("DATE_OF_BIRTH", dob);
+            patientIdentificationNode.put("DATE_OF_BIRTH_PRECISION", dobPrecision);
+            patientIdentificationNode.put("SEX", sex);
+            patientIdentificationNode.put("DEATH_DATE", deathDate);
+            patientIdentificationNode.put("DEATH_INDICATOR", deathIndicator);
+            patientIdentificationNode.put("PATIENT_ADDRESS", getPatientAddress());
+            patientIdentificationNode.put("PHONE_NUMBER", getPatientPhoneNumber());
+            patientIdentificationNode.put("MARITAL_STATUS", getMaritalStatus());
+            patientIdentificationNode.put("MOTHER_DETAILS", getMotherDetails());
+            patientSHR.put("VERSION", "1.0.0");
+            // append card details section
+            ObjectNode value = factory.objectNode();
+            value.put("STATUS", "ACTIVE");
+            value.put("REASON", "");
+            value.put("LAST_UPDATED", getSimpleDateFormat(getSHRDateFormat()).format(new Date()));
+            value.put("LAST_UPDATED_FACILITY", Utils.getDefaultLocation().getLocationId());
+            patientSHR.put("CARD_DETAILS", value);
+            patientSHR.put("PATIENT_IDENTIFICATION", patientIdentificationNode);
+            patientSHR.put("HIV_TEST", getHivTests());
+            patientSHR.put("IMMUNIZATION", extractImmunizationInformation());
+            patientSHR.put("NEXT_OF_KIN", getJsonNodeFactory().arrayNode());
+            return patientSHR;
+        } else {
+            return null;
         }
-
-        List<Obs> ancNumberObs = obsService.getObservationsByPersonAndConcept(patient, Context.getConceptService().getConceptByUuid(ANC_NUMBER));
-        Obs ancNumber = null;
-        if (ancNumberObs != null && !ancNumberObs.isEmpty()) 
-            ancNumber = ancNumberObs.get(0);
-        if (ancNumber != null) {
-            ObjectNode element = factory.objectNode();
-            patientIdentifiers.put("ANC_NUMBER", ancNumber.getValueText());
-            element.put("ID", ancNumber.getValueText());
-            element.put("IDENTIFIER_TYPE", "ANC_NUMBER");
-            element.put("ASSIGNING_AUTHORITY", "ANC");
-            element.put("ASSIGNING_FACILITY", facilityMFL);
-            internalIdentifiers.add(element);
-        }
-
-        // get other patient details
-
-        String dob = getSimpleDateFormat(getSHRDateFormat()).format(this.patient.getBirthdate());
-        String dobPrecision = patient.getBirthdateEstimated()? "ESTIMATED" : "EXACT";
-        String sex = patient.getGender();
-
-        // get death details
-        String deathDate;
-        String deathIndicator;
-        if (patient.getDeathDate() != null) {
-            deathDate = getSimpleDateFormat(getSHRDateFormat()).format(patient.getDeathDate());
-            deathIndicator = "Y";
-        }
-        else {
-            deathDate = "";
-            deathIndicator = "N";
-        }
-
-
-        patientIdentificationNode.put("INTERNAL_PATIENT_ID", internalIdentifiers);
-        patientIdentificationNode.put("EXTERNAL_PATIENT_ID", externalIdentifiers);
-        patientIdentificationNode.put("PATIENT_NAME", getPatientName());
-        patientIdentificationNode.put("DATE_OF_BIRTH", dob);
-        patientIdentificationNode.put("DATE_OF_BIRTH_PRECISION", dobPrecision);
-        patientIdentificationNode.put("SEX", sex);
-        patientIdentificationNode.put("DEATH_DATE", deathDate);
-        patientIdentificationNode.put("DEATH_INDICATOR", deathIndicator);
-        patientIdentificationNode.put("PATIENT_ADDRESS", getPatientAddress());
-        patientIdentificationNode.put("PHONE_NUMBER", getPatientPhoneNumber());
-        patientIdentificationNode.put("MARITAL_STATUS", getMaritalStatus());
-        patientIdentificationNode.put("MOTHER_DETAILS", getMotherDetails());
-        patientSHR.put("VERSION", "1.0.0");
-        // append card details section
-        ObjectNode value = factory.objectNode();
-        value.put("STATUS", "ACTIVE");
-        value.put("REASON", "");
-        value.put("LAST_UPDATED", getSimpleDateFormat(getSHRDateFormat()).format(new Date()));
-        value.put("LAST_UPDATED_FACILITY", Utils.getDefaultLocation().getLocationId());
-        patientSHR.put("CARD_DETAILS", value);
-        patientSHR.put("PATIENT_IDENTIFICATION", patientIdentificationNode);
-        patientSHR.put("HIV_TEST", getHivTests());
-        patientSHR.put("IMMUNIZATION", extractImmunizationInformation());
-        patientSHR.put("NEXT_OF_KIN", getJsonNodeFactory().arrayNode());
-        return patientSHR;
    }
 
     public ArrayNode getMotherIdentifiers (Patient patient) {
@@ -529,6 +560,14 @@ public class OutgoingPatientSHR {
 
     public void setPatientID(int patientID) {
         this.patientID = patientID;
+    }
+
+    public String getPatientIdentifier() {
+        return patientIdentifier;
+    }
+
+    public void setPatientIdentifier(String patientIdentifier) {
+        this.patientIdentifier = patientIdentifier;
     }
 
     private ObjectNode extractHivTestInformation (List<Obs> obsList) {
