@@ -22,6 +22,7 @@ import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.PsmartAuthentication;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SmartCardEligibleList;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
+import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
@@ -173,6 +174,14 @@ public class PSMARTRestController extends BaseRestController {
 		pwd = thisRequest.getPwd();
 
 		return PsmartAuthentication.authenticateUser(userName.trim(), pwd.trim()).toString();
+	}
+
+
+	@RequestMapping(method = RequestMethod.GET, value = "/testfacilitymfl")
+	@ResponseBody
+	public Object testFacilityMfl(HttpServletRequest request) {
+
+		return Utils.getDefaultLocationMflCode(Utils.getDefaultLocation());
 	}
 
 	/**

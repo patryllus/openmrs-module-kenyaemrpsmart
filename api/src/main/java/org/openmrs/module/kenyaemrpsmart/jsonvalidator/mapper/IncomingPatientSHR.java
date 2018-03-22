@@ -116,7 +116,7 @@ public class IncomingPatientSHR {
                 saveHivTestData();
                 try {
                     saveImmunizationData();
-                    return "Successfully processed P-Smart Immunization data";
+                    return "Successfully processed P-Smart data";
                 } catch (Exception e) {
                     e.printStackTrace();
                     return "There was an error processing immunization data";
@@ -198,11 +198,12 @@ public class IncomingPatientSHR {
         PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
 
         String shrGodsNumber = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
-        List<Patient> patientsAssignedGodsNumber = patientService.getPatients(null, shrGodsNumber.trim(), Arrays.asList(GODS_NUMBER_TYPE), false);
-        if (patientsAssignedGodsNumber.size() > 0) {
-            return patientsAssignedGodsNumber.get(0);
+        if(shrGodsNumber != null && !shrGodsNumber.isEmpty()) {
+            List<Patient> patientsAssignedGodsNumber = patientService.getPatients(null, shrGodsNumber.trim(), Arrays.asList(GODS_NUMBER_TYPE), false);
+            if (patientsAssignedGodsNumber.size() > 0) {
+                return patientsAssignedGodsNumber.get(0);
+            }
         }
-
         for (int x = 0; x < SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID.length; x++) {
 
             String idType = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iDENTIFIER_TYPE;
@@ -245,9 +246,11 @@ public class IncomingPatientSHR {
                     identifierType = HTS_NUMBER_TYPE;
                 }
 
-                List<Patient> patientsAlreadyAssigned = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
-                if (patientsAlreadyAssigned.size() > 0) {
-                    return patientsAlreadyAssigned.get(0);
+                if(identifierType != null && identifier != null) {
+                    List<Patient> patientsAlreadyAssigned = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
+                    if (patientsAlreadyAssigned.size() > 0) {
+                        return patientsAlreadyAssigned.get(0);
+                    }
                 }
             }
 
@@ -540,38 +543,39 @@ public class IncomingPatientSHR {
         Set<SmartCardHivTest> incomingTests = new HashSet<SmartCardHivTest>();
         Set<SmartCardHivTest> existingTests = new HashSet<SmartCardHivTest>(getHivTests());
 
-        for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length; i++) {
+        if(SHRUtils.getSHR(this.incomingSHR).hIV_TEST != null) {
+            for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length; i++) {
 
-            String dateStr = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].dATE;
-            String result = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].rESULT;
-            String type = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].tYPE;
-            String facility = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].fACILITY;
-            String strategy = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].sTRATEGY;
-            String providerDetails = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].pROVIDER_DETAILS.nAME;
-            String providerId = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].pROVIDER_DETAILS.iD;
+                String dateStr = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].dATE;
+                String result = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].rESULT;
+                String type = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].tYPE;
+                String facility = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].fACILITY;
+                String strategy = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].sTRATEGY;
+                String providerDetails = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].pROVIDER_DETAILS.nAME;
+                String providerId = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].pROVIDER_DETAILS.iD;
 
-            Date date = null;
+                Date date = null;
 
-            try {
-                date = new SimpleDateFormat("yyyyMMdd").parse(dateStr);
-            } catch (ParseException ex) {
+                try {
+                    date = new SimpleDateFormat("yyyyMMdd").parse(dateStr);
+                } catch (ParseException ex) {
 
-                ex.printStackTrace();
-            }
-            // skip all tests done in the facility
-            if(Integer.valueOf(facility) == 108900) {//temp value for this facility
-                continue;
-            }
+                    ex.printStackTrace();
+                }
+                // skip all tests done in the facility
+                if (Integer.valueOf(facility) == Integer.valueOf(Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()))) {//temp value for this facility
+                    continue;
+                }
 
-            // drop any entry with missing information
-            if(hivStatusConverter(result.trim()) != null && testStrategyConverter(strategy.trim()) != null && date != null
-                    && facility != null && providerDetails != null && providerId != null && testTypeConverter(type.trim()) != null) {
-                incomingTests.add(new SmartCardHivTest(hivStatusConverter(result.trim()),
-                        facility.trim(),
-                        testStrategyConverter(strategy.trim()), date, type.trim(), providerDetails, providerId));
+                // drop any entry with missing information
+                if (hivStatusConverter(result.trim()) != null && testStrategyConverter(strategy.trim()) != null && date != null
+                        && facility != null && providerDetails != null && providerId != null && testTypeConverter(type.trim()) != null) {
+                    incomingTests.add(new SmartCardHivTest(hivStatusConverter(result.trim()),
+                            facility.trim(),
+                            testStrategyConverter(strategy.trim()), date, type.trim(), providerDetails, providerId));
+                }
             }
         }
-
         Iterator<SmartCardHivTest> ite = incomingTests.iterator();
         while(ite.hasNext()) {
             SmartCardHivTest value = ite.next();
@@ -684,16 +688,17 @@ public class IncomingPatientSHR {
         Set<ImmunizationWrapper> immunizationData = new HashSet<ImmunizationWrapper>(processImmunizationDataFromSHR());
         Set<ImmunizationWrapper> existingImmunizationData = new HashSet<ImmunizationWrapper>(getAllImmunizationDataFromDb());
 
-        Iterator<ImmunizationWrapper> ite = immunizationData.iterator();
-        while(ite.hasNext()) {
-            ImmunizationWrapper value = ite.next();
-            for(ImmunizationWrapper db : existingImmunizationData) {
-                if(db.equals(value)) {
-                    ite.remove();
+        if(immunizationData.size() > 0) {
+            Iterator<ImmunizationWrapper> ite = immunizationData.iterator();
+            while (ite.hasNext()) {
+                ImmunizationWrapper value = ite.next();
+                for (ImmunizationWrapper db : existingImmunizationData) {
+                    if (db.equals(value)) {
+                        ite.remove();
+                    }
                 }
             }
         }
-
         if(immunizationData.size() > 0) {
             saveImmunizationData(immunizationData);
         }
@@ -861,62 +866,64 @@ public class IncomingPatientSHR {
         Concept YELLOW_FEVER = conceptService.getConcept(5864);
 
         List<ImmunizationWrapper> shrData = new ArrayList<ImmunizationWrapper>();
-        for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION.length; i++) {
+        if(SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION != null) {
+            for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION.length; i++) {
 
-            String name = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].nAME;
-            String dateAministered = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].dATE_ADMINISTERED;
-            Date date = null;
-            try {
-                date = new SimpleDateFormat("yyyyMMdd").parse(dateAministered);
-            } catch (ParseException ex) {
+                String name = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].nAME;
+                String dateAministered = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].dATE_ADMINISTERED;
+                Date date = null;
+                try {
+                    date = new SimpleDateFormat("yyyyMMdd").parse(dateAministered);
+                } catch (ParseException ex) {
 
-                ex.printStackTrace();
-            }
-            ImmunizationWrapper entry = new ImmunizationWrapper();
+                    ex.printStackTrace();
+                }
+                ImmunizationWrapper entry = new ImmunizationWrapper();
 
-            if (name.trim().equals("BCG")) {
-                entry.setVaccine(BCG);
-                entry.setSequenceNumber(null);
-            } else if (name.trim().equals("OPV_AT_BIRTH")) {
-                entry.setVaccine(OPV);
-                entry.setSequenceNumber(0);
-            } else if (name.trim().equals("OPV1")) {
-                entry.setVaccine(OPV);
-                entry.setSequenceNumber(1);
-            } else if (name.trim().equals("OPV2")) {
-                entry.setVaccine(OPV);
-                entry.setSequenceNumber(2);
-            } else if (name.trim().equals("OPV3")) {
-                entry.setVaccine(OPV);
-                entry.setSequenceNumber(3);
-            } else if (name.trim().equals("PCV10-1")) {
-                entry.setVaccine(PCV);
-                entry.setSequenceNumber(1);
-            } else if (name.trim().equals("PCV10-2")) {
-                entry.setVaccine(PCV);
-                entry.setSequenceNumber(2);
-            } else if (name.trim().equals("PCV10-3")) {
-                entry.setVaccine(PCV);
-                entry.setSequenceNumber(3);
-            } else if (name.trim().equals("ROTA1")) {
-                entry.setVaccine(ROTA);
-                entry.setSequenceNumber(1);
-            } else if (name.trim().equals("ROTA2")) {
-                entry.setVaccine(ROTA);
-                entry.setSequenceNumber(2);
-            } else if (name.trim().equals("MEASLES6")) {
-                entry.setVaccine(MEASLES);
-                entry.setSequenceNumber(1);
-            } else if (name.trim().equals("MEASLES9")) {
-                entry.setVaccine(MEASLESorRUBELLA);
-                entry.setSequenceNumber(1);
-            } else if (name.trim().equals("MEASLES18")) {
-                entry.setVaccine(MEASLESorRUBELLA);
-                entry.setSequenceNumber(2);
-            }
-            entry.setVaccineDate(date);
-            if (entry.getVaccine() != null && entry.getVaccineDate() !=null) {
-                shrData.add(entry);
+                if (name.trim().equals("BCG")) {
+                    entry.setVaccine(BCG);
+                    entry.setSequenceNumber(null);
+                } else if (name.trim().equals("OPV_AT_BIRTH")) {
+                    entry.setVaccine(OPV);
+                    entry.setSequenceNumber(0);
+                } else if (name.trim().equals("OPV1")) {
+                    entry.setVaccine(OPV);
+                    entry.setSequenceNumber(1);
+                } else if (name.trim().equals("OPV2")) {
+                    entry.setVaccine(OPV);
+                    entry.setSequenceNumber(2);
+                } else if (name.trim().equals("OPV3")) {
+                    entry.setVaccine(OPV);
+                    entry.setSequenceNumber(3);
+                } else if (name.trim().equals("PCV10-1")) {
+                    entry.setVaccine(PCV);
+                    entry.setSequenceNumber(1);
+                } else if (name.trim().equals("PCV10-2")) {
+                    entry.setVaccine(PCV);
+                    entry.setSequenceNumber(2);
+                } else if (name.trim().equals("PCV10-3")) {
+                    entry.setVaccine(PCV);
+                    entry.setSequenceNumber(3);
+                } else if (name.trim().equals("ROTA1")) {
+                    entry.setVaccine(ROTA);
+                    entry.setSequenceNumber(1);
+                } else if (name.trim().equals("ROTA2")) {
+                    entry.setVaccine(ROTA);
+                    entry.setSequenceNumber(2);
+                } else if (name.trim().equals("MEASLES6")) {
+                    entry.setVaccine(MEASLES);
+                    entry.setSequenceNumber(1);
+                } else if (name.trim().equals("MEASLES9")) {
+                    entry.setVaccine(MEASLESorRUBELLA);
+                    entry.setSequenceNumber(1);
+                } else if (name.trim().equals("MEASLES18")) {
+                    entry.setVaccine(MEASLESorRUBELLA);
+                    entry.setSequenceNumber(2);
+                }
+                entry.setVaccineDate(date);
+                if (entry.getVaccine() != null && entry.getVaccineDate() != null) {
+                    shrData.add(entry);
+                }
             }
         }
         return shrData;

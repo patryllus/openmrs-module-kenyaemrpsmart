@@ -26,7 +26,6 @@ import org.openmrs.api.ObsService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
 import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
@@ -222,9 +221,15 @@ public class OutgoingPatientSHR {
             if (address.getCountry() != null) {
                 county = address.getCountry() != null? address.getCountry(): "";
             }
+
+            if (address.getCountyDistrict() != null) {
+                county = address.getCountyDistrict() != null? address.getCountyDistrict(): "";
+            }
+
             if (address.getStateProvince() != null) {
                 sub_county = address.getStateProvince() != null? address.getStateProvince(): "";
             }
+
             if (address.getAddress4() != null) {
                 ward = address.getAddress4() != null? address.getAddress4(): "";
             }
@@ -249,6 +254,8 @@ public class OutgoingPatientSHR {
 
     public ObjectNode patientIdentification () {
 
+        JsonNodeFactory factory = getJsonNodeFactory();
+        ObjectNode patientSHR = factory.objectNode();
         if(patient != null) {
 
             String HEI_UNIQUE_NUMBER = "0691f522-dd67-4eeb-92c8-af5083baf338";
@@ -267,8 +274,7 @@ public class OutgoingPatientSHR {
             List<PatientIdentifier> identifierList = patientService.getPatientIdentifiers(null, Arrays.asList(HEI_NUMBER_TYPE, CCC_NUMBER_TYPE, NATIONAL_ID_TYPE, SMART_CARD_SERIAL_NUMBER_TYPE, HTS_NUMBER_TYPE, GODS_NUMBER_TYPE), null, Arrays.asList(this.patient), null);
             Map<String, String> patientIdentifiers = new HashMap<String, String>();
             String facilityMFL = getFacilityMFL();
-            JsonNodeFactory factory = getJsonNodeFactory();
-            ObjectNode patientSHR = factory.objectNode();
+
             ObjectNode patientIdentificationNode = factory.objectNode();
             ArrayNode internalIdentifiers = factory.arrayNode();
             ObjectNode externalIdentifiers = factory.objectNode();
@@ -381,9 +387,10 @@ public class OutgoingPatientSHR {
             patientSHR.put("HIV_TEST", getHivTests());
             patientSHR.put("IMMUNIZATION", extractImmunizationInformation());
             patientSHR.put("NEXT_OF_KIN", getJsonNodeFactory().arrayNode());
+
             return patientSHR;
         } else {
-            return null;
+            return patientSHR;
         }
    }
 
@@ -480,6 +487,7 @@ public class OutgoingPatientSHR {
        String motherName = "";
        ObjectNode mothersNameNode = getJsonNodeFactory().objectNode();
        ObjectNode motherDetails = getJsonNodeFactory().objectNode();
+       ArrayNode motherIdenfierNode = getJsonNodeFactory().arrayNode();
        RelationshipType type = getParentChildType();
 
        List<Relationship> parentChildRel = personService.getRelationships(null, patient, getParentChildType());
@@ -522,12 +530,13 @@ public class OutgoingPatientSHR {
            mothersNameNode.put("LAST_NAME", mother.getFamilyName());
 
            // get identifiers
-           ArrayNode motherIdenfierNode = getMotherIdentifiers(patientService.getPatient(mother.getPersonId()));
-           motherDetails.put("MOTHER_IDENTIFIER", motherIdenfierNode);
+           motherIdenfierNode = getMotherIdentifiers(patientService.getPatient(mother.getPersonId()));
+
 
        }
 
        motherDetails.put("MOTHER_NAME", mothersNameNode);
+       motherDetails.put("MOTHER_IDENTIFIER", motherIdenfierNode);
 
 
         return motherDetails;
@@ -598,7 +607,6 @@ public class OutgoingPatientSHR {
         User provider = obsList.get(0).getCreator();
         String testResult = "";
         String testType = "";
-        Integer testFacility = 1089;
         String testStrategy = "";
         ObjectNode testNode = getJsonNodeFactory().objectNode();
 
@@ -622,7 +630,7 @@ public class OutgoingPatientSHR {
         testNode.put("RESULT", testResult);
         testNode.put("TYPE", testType);
         testNode.put("STRATEGY", testStrategy);
-        testNode.put("FACILITY", testFacility);
+        testNode.put("FACILITY", Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()));
         testNode.put("PROVIDER_DETAILS", getProviderDetails(provider));
 
         return testNode;
