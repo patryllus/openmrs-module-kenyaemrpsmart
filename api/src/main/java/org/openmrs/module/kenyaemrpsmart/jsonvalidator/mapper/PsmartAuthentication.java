@@ -18,13 +18,13 @@ public class PsmartAuthentication {
 
                 node.put("STATUS", "true");
                 node.put("DISPLAYNAME", authenticatedUser.getDisplayString());
-                node.put("FACILITY", Utils.getDefaultLocation().getLocationId());
+                node.put("FACILITY", Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()));
             }
 
         } catch (Exception e) {
             node.put("STATUS", "false");
             node.put("DISPLAYNAME", "");
-            node.put("FACILITY", Utils.getDefaultLocation().getLocationId());
+            node.put("FACILITY", Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()));
         }
         return node;
     }
