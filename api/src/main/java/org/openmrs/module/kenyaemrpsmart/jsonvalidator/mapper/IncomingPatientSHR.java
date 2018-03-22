@@ -563,9 +563,13 @@ public class IncomingPatientSHR {
                 continue;
             }
 
-            incomingTests.add(new SmartCardHivTest(hivStatusConverter(result.trim()),
-                    facility.trim(),
-                    testStrategyConverter(strategy.trim()), date, type.trim(), providerDetails, providerId));
+            // drop any entry with missing information
+            if(hivStatusConverter(result.trim()) != null && testStrategyConverter(strategy.trim()) != null && date != null
+                    && facility != null && providerDetails != null && providerId != null && testTypeConverter(type.trim()) != null) {
+                incomingTests.add(new SmartCardHivTest(hivStatusConverter(result.trim()),
+                        facility.trim(),
+                        testStrategyConverter(strategy.trim()), date, type.trim(), providerDetails, providerId));
+            }
         }
 
         Iterator<SmartCardHivTest> ite = incomingTests.iterator();
@@ -636,6 +640,8 @@ public class IncomingPatientSHR {
         o2.setValueCoded(hivTest.getStrategy());
 
         // test provider
+        // only do this if provider details is not null
+
         Obs o3 = new Obs();
         o3.setConcept(conceptService.getConcept(healthProviderConcept));
         o3.setDateCreated(new Date());
@@ -909,8 +915,9 @@ public class IncomingPatientSHR {
                 entry.setSequenceNumber(2);
             }
             entry.setVaccineDate(date);
-            shrData.add(entry);
-
+            if (entry.getVaccine() != null && entry.getVaccineDate() !=null) {
+                shrData.add(entry);
+            }
         }
         return shrData;
     }
