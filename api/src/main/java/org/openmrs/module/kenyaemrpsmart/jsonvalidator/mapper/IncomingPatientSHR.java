@@ -113,8 +113,7 @@ public class IncomingPatientSHR {
             patientService.savePatient(this.patient);
 
             try {
-                System.out.println("Skipping HIV tests for now");
-                //saveHivTestData();
+                saveHivTestData();
                 try {
                     saveImmunizationData();
                     return "Successfully processed P-Smart Immunization data";
@@ -125,6 +124,7 @@ public class IncomingPatientSHR {
 
                 //checkinPatient();
             } catch (Exception ex) {
+                ex.printStackTrace();
                 msg = "There was an error processing P-Smart HIV Test Data";
             }
 
@@ -534,16 +534,12 @@ public class IncomingPatientSHR {
 
     private void saveHivTestData() {
 
-        Integer finalHivTestResultConcept = 159427;
-        Integer testTypeConcept = 162084;
-        Integer testStrategyConcept = 164956;
-        Integer healthProviderConcept = 1473;
-        Integer healthFacilityNameConcept = 162724;
-        Integer healthProviderIdentifierConcept = 163161;
+
 
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
-        List<SmartCardHivTest> existingTests = getHivTests();
-        System.out.println("Fooooooooooooooooooooound: " + existingTests.size());
+        Set<SmartCardHivTest> incomingTests = new HashSet<SmartCardHivTest>();
+        Set<SmartCardHivTest> existingTests = new HashSet<SmartCardHivTest>(getHivTests());
+
         for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length; i++) {
 
             String dateStr = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].dATE;
@@ -567,137 +563,127 @@ public class IncomingPatientSHR {
                 continue;
             }
 
-            boolean exists = false;
-            for(SmartCardHivTest hivTest : existingTests) {
+            incomingTests.add(new SmartCardHivTest(hivStatusConverter(result.trim()),
+                    facility.trim(),
+                    testStrategyConverter(strategy.trim()), date, type.trim(), providerDetails, providerId));
+        }
 
-                System.out.println("Answers outside ==================== : \n Test Dates: db date: " +
-                        df.format(hivTest.getDateTested()) + ", incoming date: " + dateStr + " ,\n Test strategy: incoming: " +
-                        testStrategyConverter(strategy) + ", db strategy: " + hivTest.getStrategy() +",\n Type: db: " +
-                        hivTest.getType() + ", incoming: " + type +", \n results: " +
-                        hivStatusConverter(result) + ", facility:facility =" + Integer.valueOf(facility) + ": " + hivTest.getFacility());
-
-                System.out.println("Comparisons: \n"
-                + "facility code: " + (facility.equals(hivTest.getFacility())) + "\n "
-                + "test date:" + (dateStr.equals(df.format(hivTest.getDateTested()))) + "\n "
-                + "hiv status: " + (hivStatusConverter(result).equals(hivTest.getResult())) + "\n"
-                + "strategy: " + (testStrategyConverter(strategy).equals(hivTest.getStrategy())) + "\n"
-                + "type: " + (type.trim().equals(hivTest.getType())));
-
-                if(facility.equals(hivTest.getFacility())
-                        && dateStr.equals(df.format(hivTest.getDateTested()))
-                        && hivStatusConverter(result).equals(hivTest.getResult())
-                        && testStrategyConverter(strategy).equals(hivTest.getStrategy())
-                        && type.trim().equals(hivTest.getType())) {
-                    exists = true;
-
-                    System.out.println("Answers inside ==================== : " + hivTest.getDateTested() + " ," + testStrategyConverter(strategy) + ", " + hivStatusConverter(result));
-
-                    break;
-
+        Iterator<SmartCardHivTest> ite = incomingTests.iterator();
+        while(ite.hasNext()) {
+            SmartCardHivTest value = ite.next();
+            for(SmartCardHivTest db : existingTests) {
+                if(db.equals(value)) {
+                    ite.remove();
                 }
             }
+        }
 
-            if(exists) {
-                continue;
-            }
+        for(SmartCardHivTest thisTest : incomingTests) {
 
             Encounter enc = new Encounter();
-            Location location = Context.getLocationService().getLocation(1);
+            Location location = Utils.getDefaultLocation();
             enc.setLocation(location);
             enc.setEncounterType(Context.getEncounterService().getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA));
-            enc.setEncounterDatetime(date);
+            enc.setEncounterDatetime(thisTest.getDateTested());
             enc.setPatient(patient);
             enc.addProvider(Context.getEncounterService().getEncounterRole(1), Context.getProviderService().getProvider(1));
             enc.setForm(Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_HIV_TEST));
 
 
             // build observations
-            // test result
-            Obs o = new Obs();
-            o.setConcept(conceptService.getConcept(finalHivTestResultConcept));
-            o.setDateCreated(new Date());
-            o.setCreator(Context.getUserService().getUser(1));
-            o.setLocation(location);
-            o.setObsDatetime(date);
-            o.setPerson(this.patient);
-            o.setValueCoded(hivStatusConverter(result.trim()));
-
-            // test type
-            Obs o1 = new Obs();
-            o1.setConcept(conceptService.getConcept(testTypeConcept));
-            o1.setDateCreated(new Date());
-            o1.setCreator(Context.getUserService().getUser(1));
-            o1.setLocation(location);
-            o1.setObsDatetime(date);
-            o1.setPerson(this.patient);
-            o1.setValueCoded(testTypeConverter(type.trim()));
-
-            // test strategy
-            Obs o2 = new Obs();
-            o2.setConcept(conceptService.getConcept(testStrategyConcept));
-            o2.setDateCreated(new Date());
-            o2.setCreator(Context.getUserService().getUser(1));
-            o2.setLocation(location);
-            o2.setObsDatetime(date);
-            o2.setPerson(this.patient);
-            o2.setValueCoded(testStrategyConverter(strategy.trim()));
-
-            // test provider
-            Obs o3 = new Obs();
-            o3.setConcept(conceptService.getConcept(healthProviderConcept));
-            o3.setDateCreated(new Date());
-            o3.setCreator(Context.getUserService().getUser(1));
-            o3.setLocation(location);
-            o3.setObsDatetime(date);
-            o3.setPerson(this.patient);
-            o3.setValueText(providerDetails.trim());
-
-            // test provider id
-            Obs o5 = new Obs();
-            o5.setConcept(conceptService.getConcept(healthProviderIdentifierConcept));
-            o5.setDateCreated(new Date());
-            o5.setCreator(Context.getUserService().getUser(1));
-            o5.setLocation(location);
-            o5.setObsDatetime(date);
-            o5.setPerson(this.patient);
-            o5.setValueText(providerId.trim());
-
-            // test facility
-            Obs o4 = new Obs();
-            o4.setConcept(conceptService.getConcept(healthFacilityNameConcept));
-            o4.setDateCreated(new Date());
-            o4.setCreator(Context.getUserService().getUser(1));
-            o4.setLocation(location);
-            o4.setObsDatetime(date);
-            o4.setPerson(this.patient);
-            o4.setValueText(facility.trim());
-
-
-            enc.addObs(o);
-            enc.addObs(o1);
-            enc.addObs(o2);
-            enc.addObs(o3);
-            enc.addObs(o4);
-            enc.addObs(o5);
-            encounterService.saveEncounter(enc);
-
+            setEncounterObs(enc, thisTest);
         }
+
         patientService.savePatient(patient);
     }
 
+    private void setEncounterObs(Encounter enc, SmartCardHivTest hivTest) {
+
+        Integer finalHivTestResultConcept = 159427;
+        Integer testTypeConcept = 162084;
+        Integer testStrategyConcept = 164956;
+        Integer healthProviderConcept = 1473;
+        Integer healthFacilityNameConcept = 162724;
+        Integer healthProviderIdentifierConcept = 163161;
+        // test result
+        Obs o = new Obs();
+        o.setConcept(conceptService.getConcept(finalHivTestResultConcept));
+        o.setDateCreated(new Date());
+        o.setCreator(Context.getUserService().getUser(1));
+        o.setLocation(enc.getLocation());
+        o.setObsDatetime(enc.getEncounterDatetime());
+        o.setPerson(this.patient);
+        o.setValueCoded(hivTest.getResult());
+
+        // test type
+        Obs o1 = new Obs();
+        o1.setConcept(conceptService.getConcept(testTypeConcept));
+        o1.setDateCreated(new Date());
+        o1.setCreator(Context.getUserService().getUser(1));
+        o1.setLocation(enc.getLocation());
+        o1.setObsDatetime(enc.getEncounterDatetime());
+        o1.setPerson(this.patient);
+        o1.setValueCoded(testTypeConverter(hivTest.getType().trim()));
+
+        // test strategy
+        Obs o2 = new Obs();
+        o2.setConcept(conceptService.getConcept(testStrategyConcept));
+        o2.setDateCreated(new Date());
+        o2.setCreator(Context.getUserService().getUser(1));
+        o2.setLocation(enc.getLocation());
+        o2.setObsDatetime(enc.getEncounterDatetime());
+        o2.setPerson(this.patient);
+        o2.setValueCoded(hivTest.getStrategy());
+
+        // test provider
+        Obs o3 = new Obs();
+        o3.setConcept(conceptService.getConcept(healthProviderConcept));
+        o3.setDateCreated(new Date());
+        o3.setCreator(Context.getUserService().getUser(1));
+        o3.setLocation(enc.getLocation());
+        o3.setObsDatetime(enc.getEncounterDatetime());
+        o3.setPerson(this.patient);
+        o3.setValueText(hivTest.getProviderName().trim());
+
+        // test provider id
+        Obs o5 = new Obs();
+        o5.setConcept(conceptService.getConcept(healthProviderIdentifierConcept));
+        o5.setDateCreated(new Date());
+        o5.setCreator(Context.getUserService().getUser(1));
+        o5.setLocation(enc.getLocation());
+        o5.setObsDatetime(enc.getEncounterDatetime());
+        o5.setPerson(this.patient);
+        o5.setValueText(hivTest.getProviderId().trim());
+
+        // test facility
+        Obs o4 = new Obs();
+        o4.setConcept(conceptService.getConcept(healthFacilityNameConcept));
+        o4.setDateCreated(new Date());
+        o4.setCreator(Context.getUserService().getUser(1));
+        o4.setLocation(enc.getLocation());
+        o4.setObsDatetime(enc.getEncounterDatetime());
+        o4.setPerson(this.patient);
+        o4.setValueText(hivTest.getFacility().trim());
+
+
+        enc.addObs(o);
+        enc.addObs(o1);
+        enc.addObs(o2);
+        enc.addObs(o3);
+        enc.addObs(o4);
+        enc.addObs(o5);
+        encounterService.saveEncounter(enc);
+    }
     private void saveImmunizationData() {
-        List<ImmunizationWrapper> immunizationData = processImmunizationDataFromSHR();
-        List<ImmunizationWrapper> existingImmunizationData = getAllImmunizationDataFromDb();
+        Set<ImmunizationWrapper> immunizationData = new HashSet<ImmunizationWrapper>(processImmunizationDataFromSHR());
+        Set<ImmunizationWrapper> existingImmunizationData = new HashSet<ImmunizationWrapper>(getAllImmunizationDataFromDb());
 
-        outerLoop:
-        for(ImmunizationWrapper incoming : new HashSet<ImmunizationWrapper>(immunizationData)) {
-
-            innerLoop:
-            for(ImmunizationWrapper db : new HashSet<ImmunizationWrapper>(existingImmunizationData)) {
-
-                if(db.equals(incoming)) {
-                    immunizationData.remove(incoming);
-                   break innerLoop;
+        Iterator<ImmunizationWrapper> ite = immunizationData.iterator();
+        while(ite.hasNext()) {
+            ImmunizationWrapper value = ite.next();
+            for(ImmunizationWrapper db : existingImmunizationData) {
+                if(db.equals(value)) {
+                    ite.remove();
                 }
             }
         }
@@ -707,7 +693,7 @@ public class IncomingPatientSHR {
         }
     }
 
-    private void saveImmunizationData(List<ImmunizationWrapper> data) {
+    private void saveImmunizationData(Set<ImmunizationWrapper> data) {
 
         EncounterType pSmartDataEncType = encounterService.getEncounterTypeByUuid(SmartCardMetadata._EncounterType.EXTERNAL_PSMART_DATA);
         Form pSmartImmunizationForm = Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_IMMUNIZATION);
@@ -722,7 +708,6 @@ public class IncomingPatientSHR {
             }
             organizedImmunizations.get(vaccineDate).add(immunization);
         }
-
 
         // loop through different dates
 
@@ -1026,7 +1011,8 @@ public class IncomingPatientSHR {
         Concept	testTypeConcept = conceptService.getConcept(162084);
         Concept testStrategyConcept = conceptService.getConcept(164956);
         Concept testFacilityCodeConcept = conceptService.getConcept(162724);
-
+        Concept healthProviderConcept = conceptService.getConcept(1473);
+        Concept healthProviderIdentifierConcept = conceptService.getConcept(163161);
 
 
 
@@ -1049,7 +1035,7 @@ public class IncomingPatientSHR {
 
         // append processed tests from card
         for(Encounter encounter : processedIncomingTests) {
-            List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept, testFacilityCodeConcept));
+            List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept, testFacilityCodeConcept, healthProviderConcept, healthProviderIdentifierConcept));
             testList.add(extractHivTestInformation(obs));
         }
 
@@ -1062,6 +1048,8 @@ public class IncomingPatientSHR {
         Integer	testTypeConcept = 162084;
         Integer testStrategyConcept = 164956;
         Integer testFacilityCodeConcept = 162724;
+        Integer healthProviderConcept = 1473;
+        Integer healthProviderIdentifierConcept = 163161;
 
         Date testDate= obsList.get(0).getObsDatetime();
         User provider = obsList.get(0).getCreator();
@@ -1069,13 +1057,15 @@ public class IncomingPatientSHR {
         String testType = null;
         String testFacility = null;
         Concept testStrategy = null;
+        String providerName = null;
+        String providerId = null;
 
         for(Obs obs:obsList) {
 
             if(obs.getEncounter().getForm().getUuid().equals(HTS_CONFIRMATORY_TEST_FORM_UUID)) {
                 testType = "CONFIRMATORY";
             } else if(obs.getEncounter().getForm().getUuid().equals(HTS_INITIAL_TEST_FORM_UUID)) {
-                testType = "INITIAL";
+                testType = "SCREENING";
             }
 
             if (obs.getConcept().getConceptId().equals(testTypeConcept)) {
@@ -1084,114 +1074,18 @@ public class IncomingPatientSHR {
 
             if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept) ) {
                 testResult = obs.getValueCoded();
-            } /*else if (obs.getConcept().getConceptId().equals(testTypeConcept )) {
-                testType = testTypeConverter(obs.getValueCoded());
-            }*/ else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
+            } else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
                 testStrategy = obs.getValueCoded();
             } else if(obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
                 testFacility = obs.getValueText();
+            } else if (obs.getConcept().getConceptId().equals(healthProviderConcept) ) {
+                providerName = obs.getValueText();
+            } else if(obs.getConcept().getConceptId().equals(healthProviderIdentifierConcept)) {
+                providerId = obs.getValueText();
             }
         }
-        return new SmartCardHivTest(testResult, testFacility, testStrategy, testDate, testType);
+        return new SmartCardHivTest(testResult, testFacility, testStrategy, testDate, testType, providerName, providerId);
 
     }
-
-    /**
-     * comparison with 1000 denote when a vaccine did not have sequence number documented as required
-     * @param wrapper
-     * @return node for a vaccine
-     *
-     */
-   /* ObjectNode vaccineConverterNode (ImmunizationWrapper wrapper) {
-
-        Concept BCG = conceptService.getConcept(886);
-        Concept OPV = conceptService.getConcept(783);
-        Concept IPV = conceptService.getConcept(1422);
-        Concept DPT = conceptService.getConcept(781);
-        Concept PCV = conceptService.getConcept(162342);
-        Concept ROTA = conceptService.getConcept(83531);
-        Concept MEASLESorRUBELLA = conceptService.getConcept(162586);
-        Concept MEASLES = conceptService.getConcept(36);
-        Concept YELLOW_FEVER = conceptService.getConcept(5864);
-
-        ObjectNode node = getJsonNodeFactory().objectNode();
-        if (wrapper.getVaccine().equals(BCG)) {
-            node.put("NAME","BCG");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 0) {
-            node.put("NAME","OPV_AT_BIRTH");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","OPV");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","OPV1");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","OPV2");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 3) {
-            node.put("NAME","OPV3");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(IPV) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","IPV");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(IPV) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","IPV");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","DPT/Hep_B/Hib");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","DPT/Hep_B/Hib_1");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","DPT/Hep_B/Hib_2");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 3) {
-            node.put("NAME","DPT/Hep_B/Hib_3");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","PCV10");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","PCV10-1");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","PCV10-2");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 3) {
-            node.put("NAME","PCV10-3");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","ROTA");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","ROTA1");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","ROTA2");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(MEASLES) && (wrapper.getSequenceNumber() == 1 || wrapper.getSequenceNumber() == 1000)) {
-            node.put("NAME","MEASLES6");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","MEASLES9");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","MEASLES9");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","MEASLES18");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        } else if (wrapper.getVaccine().equals(YELLOW_FEVER) && (wrapper.getSequenceNumber() == 1 || wrapper.getSequenceNumber() == 1000)) {
-            node.put("NAME","YELLOW_FEVER");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
-        }
-
-        return node;
-    }
-*/
-
 
 }
