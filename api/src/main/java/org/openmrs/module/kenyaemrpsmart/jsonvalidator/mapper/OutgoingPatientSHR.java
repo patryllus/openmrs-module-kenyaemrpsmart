@@ -8,6 +8,7 @@ import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.EncounterType;
 import org.openmrs.Form;
+import org.openmrs.Location;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
@@ -273,7 +274,7 @@ public class OutgoingPatientSHR {
 
             List<PatientIdentifier> identifierList = patientService.getPatientIdentifiers(null, Arrays.asList(HEI_NUMBER_TYPE, CCC_NUMBER_TYPE, NATIONAL_ID_TYPE, SMART_CARD_SERIAL_NUMBER_TYPE, HTS_NUMBER_TYPE, GODS_NUMBER_TYPE), null, Arrays.asList(this.patient), null);
             Map<String, String> patientIdentifiers = new HashMap<String, String>();
-            String facilityMFL = getFacilityMFL();
+            //String facilityMFL = getFacilityMFLForIdentifiers();
 
             ObjectNode patientIdentificationNode = factory.objectNode();
             ArrayNode internalIdentifiers = factory.arrayNode();
@@ -281,6 +282,7 @@ public class OutgoingPatientSHR {
 
             for (PatientIdentifier identifier : identifierList) {
                 PatientIdentifierType identifierType = identifier.getIdentifierType();
+
                 ObjectNode element = factory.objectNode();
                 if (identifierType.equals(HEI_NUMBER_TYPE)) {
                     patientIdentifiers.put("HEI_NUMBER", identifier.getIdentifier());
@@ -288,35 +290,35 @@ public class OutgoingPatientSHR {
                     element.put("ID", identifier.getIdentifier());
                     element.put("IDENTIFIER_TYPE", "HEI_NUMBER");
                     element.put("ASSIGNING_AUTHORITY", "MCH");
-                    element.put("ASSIGNING_FACILITY", facilityMFL);
+                    element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
 
                 } else if (identifierType.equals(CCC_NUMBER_TYPE)) {
                     patientIdentifiers.put("CCC_NUMBER", identifier.getIdentifier());
                     element.put("ID", identifier.getIdentifier());
                     element.put("IDENTIFIER_TYPE", "CCC_NUMBER");
                     element.put("ASSIGNING_AUTHORITY", "CCC");
-                    element.put("ASSIGNING_FACILITY", facilityMFL);
+                    element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
 
                 } else if (identifierType.equals(NATIONAL_ID_TYPE)) {
                     patientIdentifiers.put("NATIONAL_ID", identifier.getIdentifier());
                     element.put("ID", identifier.getIdentifier());
                     element.put("IDENTIFIER_TYPE", "NATIONAL_ID");
                     element.put("ASSIGNING_AUTHORITY", "GOK");
-                    element.put("ASSIGNING_FACILITY", facilityMFL);
+                    element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
 
                 } else if (identifierType.equals(SMART_CARD_SERIAL_NUMBER_TYPE)) {
                     patientIdentifiers.put("CARD_SERIAL_NUMBER", identifier.getIdentifier());
                     element.put("ID", identifier.getIdentifier());
                     element.put("IDENTIFIER_TYPE", "CARD_SERIAL_NUMBER");
                     element.put("ASSIGNING_AUTHORITY", "CARD_REGISTRY");
-                    element.put("ASSIGNING_FACILITY", facilityMFL);
+                    element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
 
                 } else if (identifierType.equals(HTS_NUMBER_TYPE)) {
                     patientIdentifiers.put("HTS_NUMBER", identifier.getIdentifier());
                     element.put("ID", identifier.getIdentifier());
                     element.put("IDENTIFIER_TYPE", "HTS_NUMBER");
                     element.put("ASSIGNING_AUTHORITY", "HTS");
-                    element.put("ASSIGNING_FACILITY", facilityMFL);
+                    element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
                 }
                 if(!element.isEmpty(null)) {
                     internalIdentifiers.add(element);
@@ -326,7 +328,7 @@ public class OutgoingPatientSHR {
                     externalIdentifiers.put("ID", identifier.getIdentifier());
                     externalIdentifiers.put("IDENTIFIER_TYPE", "GODS_NUMBER");
                     externalIdentifiers.put("ASSIGNING_AUTHORITY", "MPI");
-                    externalIdentifiers.put("ASSIGNING_FACILITY", facilityMFL);
+                    externalIdentifiers.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
                 }
 
             }
@@ -336,13 +338,14 @@ public class OutgoingPatientSHR {
             if (ancNumberObs != null && !ancNumberObs.isEmpty())
                 ancNumber = ancNumberObs.get(0);
             if (ancNumber != null) {
-                ObjectNode element = factory.objectNode();
+                //TODO: to look at this
+                /*ObjectNode element = factory.objectNode();
                 patientIdentifiers.put("ANC_NUMBER", ancNumber.getValueText());
                 element.put("ID", ancNumber.getValueText());
                 element.put("IDENTIFIER_TYPE", "ANC_NUMBER");
                 element.put("ASSIGNING_AUTHORITY", "ANC");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
-                internalIdentifiers.add(element);
+                element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
+                internalIdentifiers.add(element);*/
             }
 
             // get other patient details
@@ -413,7 +416,7 @@ public class OutgoingPatientSHR {
 
         List<PatientIdentifier> identifierList = patientService.getPatientIdentifiers(null, Arrays.asList(CCC_NUMBER_TYPE, NATIONAL_ID_TYPE, SMART_CARD_SERIAL_NUMBER_TYPE, HTS_NUMBER_TYPE, GODS_NUMBER_TYPE), null, Arrays.asList(patient), null);
         Map<String, String> patientIdentifiers = new HashMap<String, String>();
-        String facilityMFL = getFacilityMFL();
+        //String facilityMFL = getFacilityMFLForIdentifiers();
         JsonNodeFactory factory = getJsonNodeFactory();
         ArrayNode internalIdentifiers = factory.arrayNode();
 
@@ -426,35 +429,35 @@ public class OutgoingPatientSHR {
                 element.put("ID", identifier.getIdentifier());
                 element.put("IDENTIFIER_TYPE", "CCC_NUMBER");
                 element.put("ASSIGNING_AUTHORITY", "CCC");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
 
             } else if (identifierType.equals(NATIONAL_ID_TYPE)) {
                 patientIdentifiers.put("NATIONAL_ID", identifier.getIdentifier());
                 element.put("ID", identifier.getIdentifier());
                 element.put("IDENTIFIER_TYPE", "NATIONAL_ID");
                 element.put("ASSIGNING_AUTHORITY", "GOK");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
 
             } else if (identifierType.equals(SMART_CARD_SERIAL_NUMBER_TYPE)) {
                 patientIdentifiers.put("CARD_SERIAL_NUMBER", identifier.getIdentifier());
                 element.put("ID", identifier.getIdentifier());
                 element.put("IDENTIFIER_TYPE", "CARD_SERIAL_NUMBER");
                 element.put("ASSIGNING_AUTHORITY", "CARD_REGISTRY");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
 
             } else if (identifierType.equals(HTS_NUMBER_TYPE)) {
                 patientIdentifiers.put("HTS_NUMBER", identifier.getIdentifier());
                 element.put("ID", identifier.getIdentifier());
                 element.put("IDENTIFIER_TYPE", "HTS_NUMBER");
                 element.put("ASSIGNING_AUTHORITY", "HTS");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
 
             } else if (identifierType.equals(GODS_NUMBER_TYPE)) {
                 patientIdentifiers.put("GODS_NUMBER", identifier.getIdentifier());
                 element.put("ID", identifier.getIdentifier());
                 element.put("IDENTIFIER_TYPE", "GODS_NUMBER");
                 element.put("ASSIGNING_AUTHORITY", "MPI");
-                element.put("ASSIGNING_FACILITY", facilityMFL);
+                element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
             }
 
             internalIdentifiers.add(element);
@@ -466,13 +469,14 @@ public class OutgoingPatientSHR {
         if (ancNumberObs != null && !ancNumberObs.isEmpty())
             ancNumber = ancNumberObs.get(0);
         if (ancNumber != null) {
-            ObjectNode element = factory.objectNode();
+            //TODO: TO LOOK AT IT
+            /*ObjectNode element = factory.objectNode();
             patientIdentifiers.put("ANC_NUMBER", ancNumber.getValueText());
             element.put("ID", ancNumber.getValueText());
             element.put("IDENTIFIER_TYPE", "GODS_NUMBER");
             element.put("ASSIGNING_AUTHORITY", "MPI");
             element.put("ASSIGNING_FACILITY", facilityMFL);
-            internalIdentifiers.add(element);
+            internalIdentifiers.add(element);*/
         }
 
 
@@ -558,8 +562,8 @@ public class OutgoingPatientSHR {
        return null;
    }
 
-   private String getFacilityMFL () {
-       return "1108"; //;Context.getService(KenyaEmrService.class).getDefaultLocationMflCode();
+   private String getFacilityMFLForIdentifiers(Location location) {
+       return Utils.getDefaultLocationMflCode(location);
    }
 
    private JSONPObject getImmunizationDetails () {

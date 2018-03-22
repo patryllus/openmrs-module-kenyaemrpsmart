@@ -104,6 +104,9 @@ public class Utils {
     public static String getDefaultLocationMflCode(Location location) {
         String MASTER_FACILITY_CODE = "8a845a89-6aa5-4111-81d3-0af31c45c002";
 
+        if(location == null) {
+            location = getDefaultLocation();
+        }
         try {
             Context.addProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);
             Context.addProxyPrivilege(PrivilegeConstants.VIEW_GLOBAL_PROPERTIES);
@@ -119,6 +122,7 @@ public class Utils {
         return null;
     }
 
+
     public static Location getLocationFromMFLCode(String mflCode) {
 
         String MASTER_FACILITY_CODE = "8a845a89-6aa5-4111-81d3-0af31c45c002";
@@ -132,7 +136,7 @@ public class Utils {
 
             List<Location> locationForMfl = Context.getLocationService().getLocations(null, null, mflCodeMap, false, null,null);
 
-            return locationForMfl.size() > 0 ? locationForMfl.get(0) : null;
+            return locationForMfl.size() > 0 ? locationForMfl.get(0) : getDefaultLocation();
         }
         finally {
             Context.removeProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);

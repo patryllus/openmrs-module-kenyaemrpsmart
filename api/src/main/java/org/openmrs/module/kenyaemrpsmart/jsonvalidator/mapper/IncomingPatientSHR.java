@@ -322,8 +322,7 @@ public class IncomingPatientSHR {
                 PatientIdentifier godsNumber = new PatientIdentifier();
                 godsNumber.setIdentifierType(GODS_NUMBER_TYPE);
                 godsNumber.setIdentifier(shrGodsNumber);
-                godsNumber.setLocation(Utils.getDefaultLocation());
-                //godsNumber.setLocation(new Location(Integer.parseInt(godsNumberAssigningFacility)));
+                godsNumber.setLocation(Utils.getLocationFromMFLCode(godsNumberAssigningFacility) != null? Utils.getLocationFromMFLCode(godsNumberAssigningFacility) : Utils.getDefaultLocation());
                 patient.addIdentifier(godsNumber);
             }
 
@@ -378,6 +377,7 @@ public class IncomingPatientSHR {
                     patientIdentifier.setIdentifierType(identifierType);
                     patientIdentifier.setIdentifier(identifier);
                     patientIdentifier.setLocation(Utils.getDefaultLocation());
+                    patientIdentifier.setLocation(Utils.getLocationFromMFLCode(assigningFacility) != null? Utils.getLocationFromMFLCode(assigningFacility) : Utils.getDefaultLocation());
 
                     //identifierSet.add(patientIdentifier);
                     patient.addIdentifier(patientIdentifier);
@@ -398,7 +398,7 @@ public class IncomingPatientSHR {
                 preferredIdentifier = currentIdentifier;
             }
         }
-        if ((preferredIdentifier == null) && (currentIdentifier != null)) { // No preferred address. Make the last address entry as preferred.
+        if ((preferredIdentifier == null) && (currentIdentifier != null)) { // No preferred identifier. Make the last identifier entry as preferred.
             currentIdentifier.setPreferred(true);
         }
 
@@ -582,6 +582,7 @@ public class IncomingPatientSHR {
             for(SmartCardHivTest db : existingTests) {
                 if(db.equals(value)) {
                     ite.remove();
+                    break;
                 }
             }
         }
@@ -695,6 +696,7 @@ public class IncomingPatientSHR {
                 for (ImmunizationWrapper db : existingImmunizationData) {
                     if (db.equals(value)) {
                         ite.remove();
+                        break;
                     }
                 }
             }

@@ -184,6 +184,12 @@ public class PSMARTRestController extends BaseRestController {
 		return Utils.getDefaultLocationMflCode(Utils.getDefaultLocation());
 	}
 
+	@RequestMapping(method = RequestMethod.GET, value = "/getlocationfrommfl")
+	@ResponseBody
+	public Object getLocationFromFacilityMfl(HttpServletRequest request) {
+
+		return Utils.getLocationFromMFLCode("13608").getName();
+	}
 	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
 	 */
