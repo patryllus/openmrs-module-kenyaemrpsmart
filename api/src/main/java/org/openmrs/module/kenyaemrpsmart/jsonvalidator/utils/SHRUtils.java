@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SHR;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 
 /**
@@ -103,4 +104,23 @@ public class SHRUtils {
             System.out.println(ex.getMessage());
         }
     }*/
+
+    public static String fetchRequestBody(BufferedReader reader) {
+        String requestBodyJsonStr = "";
+        try {
+
+            BufferedReader br = new BufferedReader(reader);
+            String output = "";
+            while ((output = reader.readLine()) != null) {
+                requestBodyJsonStr += output;
+            }
+
+
+        } catch (IOException e) {
+
+            System.out.println("IOException: " + e.getMessage());
+
+        }
+        return requestBodyJsonStr;
+    }
 }

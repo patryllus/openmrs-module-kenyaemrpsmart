@@ -37,7 +37,7 @@
 		<!-- Module dependencies -->
 
 		<webservicesRestVersion>2.1</webservicesRestVersion>
-		<kenyaemrVersion>16.0.1</kenyaemrVersion>
+		<kenyaemrVersion>16.0.0</kenyaemrVersion>
 		<kenyacoreVersion>2.2</kenyacoreVersion>
 		<kenyauiVersion>2.0.3</kenyauiVersion>
 		<appframeworkVersion>2.2.1</appframeworkVersion>
@@ -64,14 +64,14 @@
 				<version>${idgenVersion}</version>
 				<scope>provided</scope>
 			</dependency>
-<!--
+
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
 				<artifactId>appframework-api</artifactId>
 				<version>${appframeworkVersion}</version>
 				<scope>provided</scope>
 			</dependency>
-
+<!--
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
 				<artifactId>calculation-api</artifactId>
@@ -98,7 +98,7 @@
 				<artifactId>idgen-api</artifactId>
 				<version>${idgenVersion}</version>
 				<scope>provided</scope>
-			</dependency>
+			</dependency>-->
 
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
@@ -119,7 +119,7 @@
 				<artifactId>kenyaui-api</artifactId>
 				<version>${kenyauiVersion}</version>
 				<scope>provided</scope>
-			</dependency>-->
+			</dependency>
 
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
@@ -148,7 +148,7 @@
 				<version>${serializationxstreamVersion}</version>
 				<scope>provided</scope>
 			</dependency>
-<!--
+
 
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
@@ -156,7 +156,7 @@
 				<version>${uiframeworkVersion}</version>
 				<scope>provided</scope>
 			</dependency>
-
+<!--
 			<dependency>
 				<groupId>org.openmrs.module</groupId>
 				<artifactId>kenyaemr-api</artifactId>

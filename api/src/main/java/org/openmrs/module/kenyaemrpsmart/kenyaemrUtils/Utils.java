@@ -6,11 +6,13 @@ import org.openmrs.EncounterType;
 import org.openmrs.Form;
 import org.openmrs.GlobalProperty;
 import org.openmrs.Location;
+import org.openmrs.LocationAttribute;
 import org.openmrs.LocationAttributeType;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.Person;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SmartCardHivTest;
 import org.openmrs.util.PrivilegeConstants;
 
 import java.util.Arrays;
@@ -96,7 +98,30 @@ public class Utils {
             Context.removeProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);
             Context.removeProxyPrivilege(PrivilegeConstants.VIEW_GLOBAL_PROPERTIES);
         }
+
     }
+
+    public static String getDefaultLocationMflCode(Location location) {
+        String MASTER_FACILITY_CODE = "8a845a89-6aa5-4111-81d3-0af31c45c002";
+
+        if(location == null) {
+            location = getDefaultLocation();
+        }
+        try {
+            Context.addProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);
+            Context.addProxyPrivilege(PrivilegeConstants.VIEW_GLOBAL_PROPERTIES);
+            for (LocationAttribute attr : location.getAttributes()) {
+                if (attr.getAttributeType().getUuid().equals(MASTER_FACILITY_CODE) && !attr.isVoided()) {
+                    return attr.getValueReference();
+                }
+            }
+        } finally {
+            Context.removeProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);
+            Context.removeProxyPrivilege(PrivilegeConstants.VIEW_GLOBAL_PROPERTIES);
+        }
+        return null;
+    }
+
 
     public static Location getLocationFromMFLCode(String mflCode) {
 
@@ -111,7 +136,7 @@ public class Utils {
 
             List<Location> locationForMfl = Context.getLocationService().getLocations(null, null, mflCodeMap, false, null,null);
 
-            return locationForMfl.size() > 0 ? locationForMfl.get(0) : null;
+            return locationForMfl.size() > 0 ? locationForMfl.get(0) : getDefaultLocation();
         }
         finally {
             Context.removeProxyPrivilege(PrivilegeConstants.VIEW_LOCATIONS);

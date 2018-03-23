@@ -18,6 +18,8 @@ import org.openmrs.PatientIdentifierType;
 import org.openmrs.module.metadatadeploy.bundle.AbstractMetadataBundle;
 import org.springframework.stereotype.Component;
 
+import static org.openmrs.module.metadatadeploy.bundle.CoreConstructors.encounterType;
+import static org.openmrs.module.metadatadeploy.bundle.CoreConstructors.form;
 import static org.openmrs.module.metadatadeploy.bundle.CoreConstructors.patientIdentifierType;
 
 /**
@@ -34,6 +36,22 @@ public class SmartCardMetadata extends AbstractMetadataBundle {
 		public static final String GODS_NUMBER = "9aedb9ae-1cbd-11e8-accf-0ed5f89f718b";
 	}
 
+	public static final class _Form {
+		public static final String PSMART_HIV_TEST = "9bc157d2-2794-11e8-b467-0ed5f89f718b";
+		public static final String PSMART_IMMUNIZATION = "9bc15bd8-2794-11e8-b467-0ed5f89f718b";
+	}
+
+	public static final class _VisitType {
+		public static final String OUTPATIENT = "3371a4d4-f66f-4454-a86d-92c7b3da990c";
+	}
+
+	/**
+	 * stored data read from smart card. this is separate so that reports in the system are not affected
+	 */
+	public static final class _EncounterType {
+		public static final String EXTERNAL_PSMART_DATA = "9bc15e94-2794-11e8-b467-0ed5f89f718b";
+	}
+
 	@Override
 	public void install() throws Exception {
 		install(patientIdentifierType("Smart Card Serial Number", "P-SMART Serial Number", null, null,
@@ -44,6 +62,10 @@ public class SmartCardMetadata extends AbstractMetadataBundle {
 
 		install(patientIdentifierType("GODS Number", "Number assigned by MPI", null, null,
 				null, PatientIdentifierType.LocationBehavior.NOT_USED, false, _PatientIdentifierType.GODS_NUMBER));
+		install(encounterType("External P-Smart", "Holds data read from smart card and  belong to other facilities/systems", _EncounterType.EXTERNAL_PSMART_DATA));
+
+		install(form("P-Smart HIV Test Form", "Holds HTS data read from smart card", _EncounterType.EXTERNAL_PSMART_DATA, "1", _Form.PSMART_HIV_TEST));
+		install(form("P-Smart Immunization Form", "Holds Immunization data read from smart card", _EncounterType.EXTERNAL_PSMART_DATA, "1", _Form.PSMART_IMMUNIZATION));
 
 
 	}

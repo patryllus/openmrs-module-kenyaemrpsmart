@@ -13,19 +13,27 @@
  */
 package org.openmrs.module.kenyaemrpsmart.web.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openmrs.api.context.Context;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.IncomingPatientSHR;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.MiddlewareRequest;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.PsmartAuthentication;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SmartCardEligibleList;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
+import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.context.request.WebRequest;
+
+import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 
 /**
  * The main controller.
@@ -36,25 +44,152 @@ public class PSMARTRestController extends BaseRestController {
 
 	protected final Log log = LogFactory.getLog(getClass());
 
-	@RequestMapping(method = RequestMethod.POST, value = "/receiveshr")
+	@RequestMapping(method = RequestMethod.POST, value = "/getshr")
 	@ResponseBody
-	public Object receiveSHR(WebRequest request) {
-		int patientID = request.getParameter("patientID") != null? Integer.parseInt(request.getParameter("patientID")): 0;
+	public Object receiveSHR(HttpServletRequest request) {
+		Integer patientID=null;
+		String requestBody = null;
+		MiddlewareRequest thisRequest = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+		try {
+			thisRequest = new ObjectMapper().readValue(requestBody, MiddlewareRequest.class);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return new SimpleObject().add("ServerResponse", "Error reading patient id: " + requestBody);
+		}
+		patientID=Integer.parseInt(thisRequest.getPatientID());
 		if (patientID != 0) {
 			OutgoingPatientSHR shr = new OutgoingPatientSHR(patientID);
-			return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("identification", shr.patientIdentification().toString());
+			return shr.patientIdentification().toString();
 
 		}
-		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("identification", "No patient id specified in the request: Got this: => " + request.getParameter("patientID"));
+		return new SimpleObject().add("identification", "No patient id specified in the request: Got this: => " + request.getParameter("patientID"));
 	}
 
-	@RequestMapping(method = RequestMethod.POST, value = "/prepareshr")
+	@RequestMapping(method = RequestMethod.POST, value = "/processshr")
 	@ResponseBody
-	public Object prepareSHR(WebRequest request) {
-		IncomingPatientSHR shr = new IncomingPatientSHR(getIncomingSHRSample());
-		return new SimpleObject().add("sessionId", request.getSessionId()).add("authenticated", Context.isAuthenticated()).add("patient", shr.processIncomingSHR());
+	public Object prepareSHR(HttpServletRequest request) {
+
+		String encryptedSHR=null;
+		try {
+			encryptedSHR = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			//e.printStackTrace();
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+
+		IncomingPatientSHR shr = new IncomingPatientSHR(encryptedSHR);
+		return shr.processIncomingSHR();
 	}
 
+	@RequestMapping(method = RequestMethod.GET, value = "/getsmartcardeligiblelist")
+	@ResponseBody
+	public Object prepareEligibleList(HttpServletRequest request) {
+		SmartCardEligibleList list = new SmartCardEligibleList();
+		return list.getEligibleList().toString();
+	}
+
+	@RequestMapping(method = RequestMethod.GET, value = "/getshrusingcardserial/{cardSerialNo}")
+	@ResponseBody
+	public Object getShrUsingCardSerial(HttpServletRequest request, @PathVariable("cardSerialNo") String cardSerialNo) {
+		if(cardSerialNo != null) {
+			OutgoingPatientSHR shr = new OutgoingPatientSHR(cardSerialNo);
+			return shr.patientIdentification().toString();
+		}
+		return null;
+	}
+
+	@RequestMapping(method = RequestMethod.POST, value = "/assigncardserialnumber")
+	@ResponseBody
+	public Object addSmartCardSerialToIdentifiers(HttpServletRequest request) {
+
+		Integer patientID=null;
+		String cardSerialNumber=null;
+		String requestBody = null;
+		MiddlewareRequest thisRequest = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+		try {
+			thisRequest = new ObjectMapper().readValue(requestBody, MiddlewareRequest.class);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return new SimpleObject().add("ServerResponse", "Error reading patient id: " + requestBody);
+		}
+		patientID=Integer.parseInt(thisRequest.getPatientID());
+		cardSerialNumber = thisRequest.getCardSerialNumber();
+		IncomingPatientSHR shr = new IncomingPatientSHR(patientID);
+		return shr.assignCardSerialIdentifier(cardSerialNumber, null);
+	}
+
+	@RequestMapping(method = RequestMethod.POST, value = "/checkexistingclient")
+	@ResponseBody
+	public Object clientExists(HttpServletRequest request) {
+
+		Integer patientID=null;
+		String cardSerialNumber=null;
+		String requestBody = null;
+		MiddlewareRequest thisRequest = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+
+		IncomingPatientSHR shr = new IncomingPatientSHR(requestBody);
+		return shr.patientExists();
+	}
+
+	/**
+	 * Handle authentication
+	 * @param request
+	 * @return
+	 */
+	@RequestMapping(method = RequestMethod.POST, value = "/authenticateuser")
+	@ResponseBody
+	public Object userAuthentication(HttpServletRequest request) {
+		String requestBody = null;
+		String userName=null;
+		String pwd = null;
+		MiddlewareRequest thisRequest = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+
+		try {
+			thisRequest = new ObjectMapper().readValue(requestBody, MiddlewareRequest.class);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return new SimpleObject().add("ServerResponse", "Error parsing request body: " + requestBody);
+		}
+		userName = thisRequest.getUserName();
+		pwd = thisRequest.getPwd();
+
+		return PsmartAuthentication.authenticateUser(userName.trim(), pwd.trim()).toString();
+	}
+
+
+	@RequestMapping(method = RequestMethod.GET, value = "/testfacilitymfl")
+	@ResponseBody
+	public Object testFacilityMfl(HttpServletRequest request) {
+
+		return Utils.getDefaultLocationMflCode(Utils.getDefaultLocation());
+	}
+
+	@RequestMapping(method = RequestMethod.GET, value = "/getlocationfrommfl")
+	@ResponseBody
+	public Object getLocationFromFacilityMfl(HttpServletRequest request) {
+
+		return Utils.getLocationFromMFLCode("13608").getName();
+	}
 	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
 	 */
@@ -69,47 +204,47 @@ public class PSMARTRestController extends BaseRestController {
 				"  \"VERSION\": \"1.0.0\",\n" +
 				"  \"PATIENT_IDENTIFICATION\": {\n" +
 				"    \"EXTERNAL_PATIENT_ID\": {\n" +
-				"      \"ID\": \"110ec58a-a0f2-4ac4-8393-c866d813b8d2\",\n" +
+				"      \"ID\": \"110ec58a-a0f2-4ac4-8393-c866d813b8d8\",\n" +
 				"      \"IDENTIFIER_TYPE\": \"GODS_NUMBER\",\n" +
 				"      \"ASSIGNING_AUTHORITY\": \"MPI\",\n" +
 				"      \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"    },\n" +
 				"    \"INTERNAL_PATIENT_ID\": [\n" +
 				"      {\n" +
-				"        \"ID\": \"12345678-ADFGHJY-0987654-NHYI891\",\n" +
+				"        \"ID\": \"12345678-ADFGHJY-0987654-NHYI898\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"CARD_SERIAL_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"CARD_REGISTRY\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      },\n" +
 				"      {\n" +
-				"        \"ID\": \"123456781\",\n" +
+				"        \"ID\": \"123456788\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"HEI_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"MCH\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      },\n" +
 				"      {\n" +
-				"        \"ID\": \"1234567801\",\n" +
+				"        \"ID\": \"1234567808\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"CCC_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"CCC\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      },\n" +
 				"      {\n" +
-				"        \"ID\": \"00101\",\n" +
+				"        \"ID\": \"00108\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"HTS_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"HTS\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      },\n" +
 				"      {\n" +
-				"        \"ID\": \"ABC56767\",\n" +
+				"        \"ID\": \"ABC56778\",\n" +
 				"        \"IDENTIFIER_TYPE\": \"ANC_NUMBER\",\n" +
 				"        \"ASSIGNING_AUTHORITY\": \"ANC\",\n" +
 				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
 				"      }\n" +
 				"    ],\n" +
 				"    \"PATIENT_NAME\": {\n" +
-				"      \"FIRST_NAME\": \"GRACE\",\n" +
-				"      \"MIDDLE_NAME\": \"MWANIKI\",\n" +
-				"      \"LAST_NAME\": \"MONGARE\"\n" +
+				"      \"FIRST_NAME\": \"SERILA\",\n" +
+				"      \"MIDDLE_NAME\": \"SARAH\",\n" +
+				"      \"LAST_NAME\": \"SORROW\"\n" +
 				"    },\n" +
 				"    \"DATE_OF_BIRTH\": \"20111111\",\n" +
 				"    \"DATE_OF_BIRTH_PRECISION\": \"EXACT\",\n" +

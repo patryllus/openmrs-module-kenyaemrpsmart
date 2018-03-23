@@ -19,6 +19,13 @@
 
 	<!-- Add here beans related to the API context -->
 
+	<bean id="kenyaemrpsmart.patienthome.page" factory-bean="kenyacore.appFactoryBean" factory-method="createInstance">
+		<constructor-arg value="kenyaemrpsmart.home" />
+		<constructor-arg value="P-Smart Module" />
+		<constructor-arg value="kenyaemrpsmart/kenyaemrpsmarthome.page" />
+		<constructor-arg value="kenyaui:apps/reports.png" />
+		<constructor-arg value="110000" />
+	</bean>
 	
 	<!-- Services accessible via Context.getService() -->
 	<bean parent="serviceContext">
