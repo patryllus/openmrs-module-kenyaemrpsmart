@@ -49,7 +49,7 @@ public class SmartCardEligibleList {
             Patient patient = encounter.getPatient();
             List<PatientIdentifier> identifiers = patient.getPatientIdentifiers(SMART_CARD_SERIAL_NUMBER_TYPE);
             ObjectNode patientNode = getJsonNodeFactory().objectNode();
-            if(!patientList.contains(patient) && identifiers.size() == 0 && df.format(encounter.getEncounterDatetime()).equals(df.format(new Date())) && patient.getAge() < 10) {
+            if(!patientList.contains(patient) && identifiers.size() == 0 && df.format(encounter.getEncounterDatetime()).equals(df.format(new Date())) && patient.getAge() < 15) {
                 patientNode.put("PATIENTID", patient.getPatientId());
                 patientNode.put("FIRSTNAME", patient.getGivenName());
                 patientNode.put("MIDDLENAME", patient.getMiddleName());

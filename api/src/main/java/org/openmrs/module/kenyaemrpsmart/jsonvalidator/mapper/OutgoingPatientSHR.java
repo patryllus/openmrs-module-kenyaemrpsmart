@@ -136,8 +136,9 @@ public class OutgoingPatientSHR {
         Concept finalHivTestResultConcept = conceptService.getConcept(159427);
         Concept	testTypeConcept = conceptService.getConcept(162084);
         Concept testStrategyConcept = conceptService.getConcept(164956);
-
-
+        Concept testFacilityCodeConcept = conceptService.getConcept(162724);
+        Concept healthProviderConcept = conceptService.getConcept(1473);
+        Concept healthProviderIdentifierConcept = conceptService.getConcept(163161);
 
 
         Form HTS_INITIAL_FORM = Context.getFormService().getFormByUuid(HTS_INITIAL_TEST_FORM_UUID);
@@ -159,7 +160,7 @@ public class OutgoingPatientSHR {
 
         // append processed tests from card
         for(Encounter encounter : processedIncomingTests) {
-            List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept));
+            List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept, testFacilityCodeConcept, healthProviderConcept, healthProviderIdentifierConcept));
             testList.add(extractHivTestInformation(obs));
         }
 
@@ -606,12 +607,16 @@ public class OutgoingPatientSHR {
         Integer finalHivTestResultConcept = 159427;
         Integer	testTypeConcept = 162084;
         Integer testStrategyConcept = 164956;
+        Integer testFacilityCodeConcept = 162724;
+        Integer healthProviderConcept = 1473;
+        Integer healthProviderIdentifierConcept = 163161;
 
         Date testDate= obsList.get(0).getObsDatetime();
         User provider = obsList.get(0).getCreator();
         String testResult = "";
         String testType = "";
         String testStrategy = "";
+        String testFacility = null;
         ObjectNode testNode = getJsonNodeFactory().objectNode();
 
         for(Obs obs:obsList) {
@@ -628,13 +633,15 @@ public class OutgoingPatientSHR {
                 testType = testTypeConverter(obs.getValueCoded());
             }*/ else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
                 testStrategy = testStrategyConverter(obs.getValueCoded());
+            } else if(obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
+                testFacility = obs.getValueText();
             }
         }
         testNode.put("DATE", getSimpleDateFormat(getSHRDateFormat()).format(testDate));
         testNode.put("RESULT", testResult);
         testNode.put("TYPE", testType);
         testNode.put("STRATEGY", testStrategy);
-        testNode.put("FACILITY", Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()));
+        testNode.put("FACILITY", Utils.getDefaultLocationMflCode(Utils.getLocationFromMFLCode(testFacility)));
         testNode.put("PROVIDER_DETAILS", getProviderDetails(provider));
 
         return testNode;

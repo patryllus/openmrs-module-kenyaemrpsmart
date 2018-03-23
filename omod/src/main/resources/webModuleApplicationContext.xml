@@ -22,8 +22,9 @@
 
 	<!-- Add here beans related to the web context -->
 	<bean class="org.openmrs.ui.framework.StandardModuleUiConfiguration">
-		<property name="moduleId" value="kenyaemr"/>
+		<property name="moduleId" value="kenyaemrpsmart"/>
 	</bean>
+
 	 
 	<!-- Annotation based controllers -->
 	<bean class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping"/>

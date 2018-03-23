@@ -5,7 +5,7 @@ import org.openmrs.Concept;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-class ImmunizationWrapper {
+public class ImmunizationWrapper {
     private Concept vaccine;
     private Integer sequenceNumber;
     private Date vaccineDate;
