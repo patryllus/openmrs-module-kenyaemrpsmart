@@ -10,9 +10,19 @@
     -->
 
     <changeSet id="${project.parent.artifactId}-20160511-1056" author="alaboso">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="psmart_store" /></not>
+        </preConditions>
+        <comment>
+            Create table to data to be sent to psmart registry
+        </comment>
         <createTable tableName="psmart_store">
-            <column name="id" type="int"></column>
-            <column name="uuid" type="varchar(38)" ></column>
+            <column name="id" autoIncrement="true" type="int">
+                <constraints nullable="false" primaryKey="true" />
+            </column>
+            <column name="uuid" type="char(38)">
+                <constraints nullable="false" unique="true" />
+            </column>
             <column name="shr" type="text"></column>
             <column name="date_created" type="datetime"></column>
             <column name="status" type="varchar(20)"></column>
