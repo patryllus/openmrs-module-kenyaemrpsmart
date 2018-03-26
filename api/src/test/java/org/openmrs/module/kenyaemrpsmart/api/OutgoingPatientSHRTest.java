@@ -15,7 +15,9 @@ package org.openmrs.module.kenyaemrpsmart.api;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.openmrs.api.context.Context;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
 
@@ -31,6 +33,12 @@ public class OutgoingPatientSHRTest extends BaseModuleContextSensitiveTest {
 	public void setup() throws Exception {
 		executeDataSet("dataset/test-dataset.xml");
 	}
+
+	@Test
+	public void shouldCheckService() {
+		Assert.assertNotNull(Context.getService(EndPointService.class));
+	}
+	@Ignore
 	@Test
 	public void shouldReturnPatientSHR() {
 
