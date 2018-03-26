@@ -15,13 +15,12 @@ package org.openmrs.module.kenyaemrpsmart.api;
 
 import static org.junit.Assert.*;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openmrs.api.context.Context;
 import org.openmrs.test.BaseModuleContextSensitiveTest;
 
 /**
- * Tests {@link {EndPointService}}.
+ * Tests {@link {PsmartService}}.
  */
 
 public class  EndPointServiceTest extends BaseModuleContextSensitiveTest {
@@ -29,6 +28,6 @@ public class  EndPointServiceTest extends BaseModuleContextSensitiveTest {
 	@Test
 	public void shouldSetupContext() {
 
-		assertNotNull(Context.getService(EndPointService.class));
+		assertNotNull(Context.getService(PsmartService.class));
 	}
 }

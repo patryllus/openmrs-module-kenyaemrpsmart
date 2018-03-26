@@ -27,6 +27,8 @@ import org.openmrs.api.ObsService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.kenyaemrpsmart.PsmartStore;
+import org.openmrs.module.kenyaemrpsmart.api.PsmartService;
 import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
@@ -50,6 +52,7 @@ public class OutgoingPatientSHR {
    private AdministrationService administrationService;
    private EncounterService encounterService;
    private String patientIdentifier;
+   private PsmartService psmartService;
 
    String TELEPHONE_CONTACT = "b2c38640-2603-4629-aebd-3b54f33f1e3a";
    String CIVIL_STATUS_CONCEPT = "1054AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -61,6 +64,9 @@ public class OutgoingPatientSHR {
     String UNIQUE_PATIENT_NUMBER = "05ee9cf4-7242-4a17-b4d4-00f707265c8a";
     String ANC_NUMBER = "161655AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
+    public OutgoingPatientSHR() {
+        this.psmartService = Context.getService(PsmartService.class);
+    }
 
     public OutgoingPatientSHR(Integer patientID) {
         this.patientID = patientID;
@@ -72,6 +78,7 @@ public class OutgoingPatientSHR {
         this.administrationService = Context.getAdministrationService();
         this.conceptService = Context.getConceptService();
         this.encounterService = Context.getEncounterService();
+
     }
 
     public OutgoingPatientSHR(String patientIdentifier) {
@@ -842,6 +849,10 @@ public class OutgoingPatientSHR {
             immunizationNode.add(vaccineConverterNode(thisWrapper));
         }
         return immunizationNode;
+    }
+
+    public PsmartStore saveRegistryEntry(PsmartStore psmartStore) {
+        return psmartService.savePsmartStoreObject(psmartStore);
     }
 
 }

@@ -16,6 +16,8 @@ package org.openmrs.module.kenyaemrpsmart.web.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openmrs.module.kenyaemrpsmart.PsmartStore;
+import org.openmrs.module.kenyaemrpsmart.api.PsmartService;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.IncomingPatientSHR;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.MiddlewareRequest;
 import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR;
@@ -34,6 +36,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 
 /**
  * The main controller.
@@ -190,6 +194,23 @@ public class PSMARTRestController extends BaseRestController {
 
 		return Utils.getLocationFromMFLCode("13608").getName();
 	}
+
+	@RequestMapping(method = RequestMethod.GET, value = "/testpsmartstore")
+	@ResponseBody
+	public Object testpsmartstore(HttpServletRequest request) {
+		PsmartStore test = new PsmartStore();
+		test.setDateCreated(new Date());
+		test.setShr("This is test SHR. I think this cannot work");
+		test.setAddendum("this is addendum");
+		test.setStatus("PENDING");
+		test.setStatusDate(new Timestamp(new Date().getTime()));
+		test.setDateCreated(new Timestamp(new Date().getTime()));
+		OutgoingPatientSHR obj = new OutgoingPatientSHR();
+		obj.saveRegistryEntry(test);
+
+		return null;
+	}
+
 	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
 	 */

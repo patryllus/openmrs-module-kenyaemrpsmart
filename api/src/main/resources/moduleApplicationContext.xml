@@ -31,16 +31,16 @@
 	<bean parent="serviceContext">
 		<property name="moduleService">
 			<list>
-				<value>org.openmrs.module.kenyaemrpsmart.api.EndPointService</value>
+				<value>org.openmrs.module.kenyaemrpsmart.api.PsmartService</value>
 				<bean
 					class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
 					<property name="transactionManager">
 						<ref bean="transactionManager" />
 					</property>
 					<property name="target">
-						<bean class="org.openmrs.module.kenyaemrpsmart.api.impl.EndPointServiceImpl">
+						<bean class="org.openmrs.module.kenyaemrpsmart.api.impl.PsmartServiceImpl">
 							<property name="dao">
-								<bean class="org.openmrs.module.kenyaemrpsmart.api.db.hibernate.HibernateEndPointDAO">
+								<bean class="org.openmrs.module.kenyaemrpsmart.api.db.hibernate.HibernatePsmartDAO">
 									<property name="sessionFactory">
 										<ref bean="sessionFactory" />
 									</property>

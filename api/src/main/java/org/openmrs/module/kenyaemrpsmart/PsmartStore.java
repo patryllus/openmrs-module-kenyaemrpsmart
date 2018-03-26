@@ -6,28 +6,23 @@ import javax.persistence.Column;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Lob;
+import javax.persistence.PrePersist;
 import java.sql.Timestamp;
+import java.util.UUID;
 
 public class PsmartStore extends BaseOpenmrsData {
-    @Id
-    @GeneratedValue
+
     private Integer id;
-
     private String uuid;
-
-    @Lob
     private String shr;
-
-    @Column(name = "date_created", nullable = false)
     private Timestamp dateCreated;
-
     private String status;
-
-    @Column(name = "status_date", nullable = false)
     private Timestamp statusDate;
-
-    @Lob
     private String addendum;
+
+    public PsmartStore() {
+        prePersist();
+    }
 
     @Override
     public Integer getId() {
@@ -88,6 +83,12 @@ public class PsmartStore extends BaseOpenmrsData {
 
     public void setAddendum(String addendum) {
         this.addendum = addendum;
+    }
+
+    public void prePersist(){
+
+        if(null == getUuid())
+            setUuid(UUID.randomUUID().toString());
     }
 
     @Override

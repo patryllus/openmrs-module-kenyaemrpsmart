@@ -22,7 +22,7 @@ import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.OutgoingPatientSHR
 import org.openmrs.test.BaseModuleContextSensitiveTest;
 
 /**
- * Tests {@link {EndPointService}}.
+ * Tests {@link {PsmartService}}.
  */
 @Ignore
 public class IncomingPatientSHRTest extends BaseModuleContextSensitiveTest {

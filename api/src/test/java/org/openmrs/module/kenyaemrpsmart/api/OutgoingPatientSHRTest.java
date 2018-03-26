@@ -24,7 +24,7 @@ import org.openmrs.test.BaseModuleContextSensitiveTest;
 import static org.junit.Assert.assertNotNull;
 
 /**
- * Tests {@link {EndPointService}}.
+ * Tests {@link {PsmartService}}.
  */
 
 public class OutgoingPatientSHRTest extends BaseModuleContextSensitiveTest {
@@ -36,7 +36,7 @@ public class OutgoingPatientSHRTest extends BaseModuleContextSensitiveTest {
 
 	@Test
 	public void shouldCheckService() {
-		Assert.assertNotNull(Context.getService(EndPointService.class));
+		Assert.assertNotNull(Context.getService(PsmartService.class));
 	}
 	@Ignore
 	@Test

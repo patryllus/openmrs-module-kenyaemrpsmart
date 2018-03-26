@@ -5,10 +5,11 @@
 
 <hibernate-mapping package="org.openmrs.module.kenyaemrpsmart">
 
-    <class name="org.openmrs.module.kenyaemrpsmart.PsmartStore">
-        <id name="id" type="int" column="id" unsaved-value="0">
+    <class name="PsmartStore" table="psmart_store">
+        <id name="id" type="java.lang.Integer" column="id" unsaved-value="0">
             <generator class="native" />
         </id>
+        <discriminator column="id" insert="false" />
         <property name="uuid" type="java.lang.String" column="uuid" length="38" unique="true" />
         <property name="shr" type="java.lang.String" length="65535" column="shr" />
         <property name="dateCreated" type="java.sql.Timestamp" column="date_created"/>

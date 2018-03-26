@@ -33,9 +33,7 @@
 	
 	<!-- Maps hibernate file's, if present -->
 	<mappingFiles>
-				
-		EndPoint.hbm.xml
-				
+		PsmartStore.hbm.xml
 	</mappingFiles>
 
 	<!-- Internationalization -->
