@@ -43,20 +43,20 @@ import java.util.Set;
 
 public class OutgoingPatientSHR {
 
-   private Integer patientID;
-   private Patient patient;
-   private PersonService personService;
-   private PatientService patientService;
-   private ObsService obsService;
-   private ConceptService conceptService;
-   private AdministrationService administrationService;
-   private EncounterService encounterService;
-   private String patientIdentifier;
-   private PsmartService psmartService;
+    private Integer patientID;
+    private Patient patient;
+    private PersonService personService;
+    private PatientService patientService;
+    private ObsService obsService;
+    private ConceptService conceptService;
+    private AdministrationService administrationService;
+    private EncounterService encounterService;
+    private String patientIdentifier;
+    private PsmartService psmartService;
 
-   String TELEPHONE_CONTACT = "b2c38640-2603-4629-aebd-3b54f33f1e3a";
-   String CIVIL_STATUS_CONCEPT = "1054AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-   String IMMUNIZATION_FORM_UUID = "b4f3859e-861c-4a63-bdff-eb7392030d47";
+    String TELEPHONE_CONTACT = "b2c38640-2603-4629-aebd-3b54f33f1e3a";
+    String CIVIL_STATUS_CONCEPT = "1054AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    String IMMUNIZATION_FORM_UUID = "b4f3859e-861c-4a63-bdff-eb7392030d47";
     String HTS_INITIAL_TEST_FORM_UUID = "402dc5d7-46da-42d4-b2be-f43ea4ad87b0";
     String HTS_CONFIRMATORY_TEST_FORM_UUID = "b08471f6-0892-4bf7-ab2b-bf79797b8ea4";
     String HEI_UNIQUE_NUMBER = "0691f522-dd67-4eeb-92c8-af5083baf338";
@@ -92,12 +92,12 @@ public class OutgoingPatientSHR {
         setPatientUsingIdentifier();
     }
 
-    private JsonNodeFactory getJsonNodeFactory () {
+    private JsonNodeFactory getJsonNodeFactory() {
         final JsonNodeFactory factory = JsonNodeFactory.instance;
         return factory;
     }
 
-    private ObjectNode getPatientName () {
+    private ObjectNode getPatientName() {
         PersonName pn = patient.getPersonName();
         ObjectNode nameNode = getJsonNodeFactory().objectNode();
         nameNode.put("FIRST_NAME", pn.getGivenName());
@@ -116,12 +116,12 @@ public class OutgoingPatientSHR {
 
     private String getPatientPhoneNumber() {
         PersonAttributeType phoneNumberAttrType = personService.getPersonAttributeTypeByUuid(TELEPHONE_CONTACT);
-        return patient.getAttribute(phoneNumberAttrType) != null ? patient.getAttribute(phoneNumberAttrType).getValue(): "";
+        return patient.getAttribute(phoneNumberAttrType) != null ? patient.getAttribute(phoneNumberAttrType).getValue() : "";
     }
 
     public void setPatientUsingIdentifier() {
 
-        if(patientIdentifier != null) {
+        if (patientIdentifier != null) {
             PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
             PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
             PatientIdentifierType NATIONAL_ID_TYPE = patientService.getPatientIdentifierTypeByUuid(NATIONAL_ID);
@@ -132,16 +132,17 @@ public class OutgoingPatientSHR {
             List<Patient> patientsListWithIdentifier = patientService.getPatients(null, patientIdentifier.trim(),
                     Arrays.asList(GODS_NUMBER_TYPE, HEI_NUMBER_TYPE, CCC_NUMBER_TYPE, NATIONAL_ID_TYPE, SMART_CARD_SERIAL_NUMBER_TYPE, HTS_NUMBER_TYPE, GODS_NUMBER_TYPE), false);
             if (patientsListWithIdentifier.size() > 0) {
-                this.patient =  patientsListWithIdentifier.get(0);
+                this.patient = patientsListWithIdentifier.get(0);
             }
 
         }
     }
+
     private ArrayNode getHivTests() {
 
         // test concepts
         Concept finalHivTestResultConcept = conceptService.getConcept(159427);
-        Concept	testTypeConcept = conceptService.getConcept(162084);
+        Concept testTypeConcept = conceptService.getConcept(162084);
         Concept testStrategyConcept = conceptService.getConcept(164956);
         Concept testFacilityCodeConcept = conceptService.getConcept(162724);
         Concept healthProviderConcept = conceptService.getConcept(1473);
@@ -160,23 +161,24 @@ public class OutgoingPatientSHR {
 
         ArrayNode testList = getJsonNodeFactory().arrayNode();
         // loop through encounters and extract hiv test information
-        for(Encounter encounter : htsEncounters) {
+        for (Encounter encounter : htsEncounters) {
             List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept));
             testList.add(extractHivTestInformation(obs));
         }
 
         // append processed tests from card
-        for(Encounter encounter : processedIncomingTests) {
+        for (Encounter encounter : processedIncomingTests) {
             List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept, testFacilityCodeConcept, healthProviderConcept, healthProviderIdentifierConcept));
             testList.add(extractHivTestInformation(obs));
         }
 
         return testList;
     }
+
     private String getMaritalStatus() {
         Obs maritalStatus = Utils.getLatestObs(this.patient, CIVIL_STATUS_CONCEPT);
         String statusString = "";
-        if(maritalStatus != null) {
+        if (maritalStatus != null) {
             String MARRIED_MONOGAMOUS = "5555AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
             String MARRIED_POLYGAMOUS = "159715AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
             String DIVORCED = "1058AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -184,13 +186,13 @@ public class OutgoingPatientSHR {
             String LIVING_WITH_PARTNER = "1060AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
             String NEVER_MARRIED = "1057AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-            if(maritalStatus.getValueCoded().equals(MARRIED_MONOGAMOUS)) {
+            if (maritalStatus.getValueCoded().equals(MARRIED_MONOGAMOUS)) {
                 statusString = "Married Monogamous";
-            } else if(maritalStatus.getValueCoded().equals(MARRIED_POLYGAMOUS)) {
+            } else if (maritalStatus.getValueCoded().equals(MARRIED_POLYGAMOUS)) {
                 statusString = "Married Polygamous";
             } else if (maritalStatus.getValueCoded().equals(DIVORCED)) {
                 statusString = "Divorced";
-            } else if(maritalStatus.getValueCoded().equals(WIDOWED)) {
+            } else if (maritalStatus.getValueCoded().equals(WIDOWED)) {
                 statusString = "Widowed";
             } else if (maritalStatus.getValueCoded().equals(LIVING_WITH_PARTNER)) {
                 statusString = "Living with Partner";
@@ -228,22 +230,22 @@ public class OutgoingPatientSHR {
                 postalAddress = address.getAddress1();
             }
             if (address.getCountry() != null) {
-                county = address.getCountry() != null? address.getCountry(): "";
+                county = address.getCountry() != null ? address.getCountry() : "";
             }
 
             if (address.getCountyDistrict() != null) {
-                county = address.getCountyDistrict() != null? address.getCountyDistrict(): "";
+                county = address.getCountyDistrict() != null ? address.getCountyDistrict() : "";
             }
 
             if (address.getStateProvince() != null) {
-                sub_county = address.getStateProvince() != null? address.getStateProvince(): "";
+                sub_county = address.getStateProvince() != null ? address.getStateProvince() : "";
             }
 
             if (address.getAddress4() != null) {
-                ward = address.getAddress4() != null? address.getAddress4(): "";
+                ward = address.getAddress4() != null ? address.getAddress4() : "";
             }
             if (address.getAddress2() != null) {
-                landMark =  address.getAddress2() != null? address.getAddress2(): "";
+                landMark = address.getAddress2() != null ? address.getAddress2() : "";
             }
 
         }
@@ -261,11 +263,11 @@ public class OutgoingPatientSHR {
     }
 
 
-    public ObjectNode patientIdentification () {
+    public ObjectNode patientIdentification() {
 
         JsonNodeFactory factory = getJsonNodeFactory();
         ObjectNode patientSHR = factory.objectNode();
-        if(patient != null) {
+        if (patient != null) {
 
             String HEI_UNIQUE_NUMBER = "0691f522-dd67-4eeb-92c8-af5083baf338";
             String NATIONAL_ID = "49af6cdc-7968-4abb-bf46-de10d7f4859f";
@@ -328,7 +330,7 @@ public class OutgoingPatientSHR {
                     element.put("ASSIGNING_AUTHORITY", "HTS");
                     element.put("ASSIGNING_FACILITY", getFacilityMFLForIdentifiers(identifier.getLocation()));
                 }
-                if(!element.isEmpty(null)) {
+                if (!element.isEmpty(null)) {
                     internalIdentifiers.add(element);
                 }
                 if (identifierType.equals(GODS_NUMBER_TYPE)) {
@@ -403,10 +405,9 @@ public class OutgoingPatientSHR {
         } else {
             return patientSHR;
         }
-   }
+    }
 
-    public ArrayNode getMotherIdentifiers (Patient patient) {
-
+    public ArrayNode getMotherIdentifiers(Patient patient) {
 
         String HEI_UNIQUE_NUMBER = "0691f522-dd67-4eeb-92c8-af5083baf338";
         String NATIONAL_ID = "49af6cdc-7968-4abb-bf46-de10d7f4859f";
@@ -420,15 +421,13 @@ public class OutgoingPatientSHR {
         PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
         PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
 
-
-
         List<PatientIdentifier> identifierList = patientService.getPatientIdentifiers(null, Arrays.asList(CCC_NUMBER_TYPE, NATIONAL_ID_TYPE, SMART_CARD_SERIAL_NUMBER_TYPE, HTS_NUMBER_TYPE, GODS_NUMBER_TYPE), null, Arrays.asList(patient), null);
         Map<String, String> patientIdentifiers = new HashMap<String, String>();
-        //String facilityMFL = getFacilityMFLForIdentifiers();
+
         JsonNodeFactory factory = getJsonNodeFactory();
         ArrayNode internalIdentifiers = factory.arrayNode();
 
-        for (PatientIdentifier identifier: identifierList) {
+        for (PatientIdentifier identifier : identifierList) {
             PatientIdentifierType identifierType = identifier.getIdentifierType();
             ObjectNode element = factory.objectNode();
 
@@ -487,96 +486,92 @@ public class OutgoingPatientSHR {
             internalIdentifiers.add(element);*/
         }
 
-
-        // identifiers.put("MOTHER_IDENTIFIER", internalIdentifiers);
         return internalIdentifiers;
     }
 
-   private ObjectNode getMotherDetails () {
+    private ObjectNode getMotherDetails() {
 
-      // get relationships
-       // mother name
-       String motherName = "";
-       ObjectNode mothersNameNode = getJsonNodeFactory().objectNode();
-       ObjectNode motherDetails = getJsonNodeFactory().objectNode();
-       ArrayNode motherIdenfierNode = getJsonNodeFactory().arrayNode();
-       RelationshipType type = getParentChildType();
+        // get relationships
+        // mother name
+        String motherName = "";
+        ObjectNode mothersNameNode = getJsonNodeFactory().objectNode();
+        ObjectNode motherDetails = getJsonNodeFactory().objectNode();
+        ArrayNode motherIdenfierNode = getJsonNodeFactory().arrayNode();
+        RelationshipType type = getParentChildType();
 
-       List<Relationship> parentChildRel = personService.getRelationships(null, patient, getParentChildType());
-       if (parentChildRel.isEmpty() && parentChildRel.size() == 0) {
+        List<Relationship> parentChildRel = personService.getRelationships(null, patient, getParentChildType());
+        if (parentChildRel.isEmpty() && parentChildRel.size() == 0) {
             // try getting this from person attribute
-           if (patient.getAttribute(4) != null) {
-               motherName = patient.getAttribute(4).getValue();
-               mothersNameNode.put("FIRST_NAME", motherName);
-               mothersNameNode.put("MIDDLE_NAME", "");
-               mothersNameNode.put("LAST_NAME", "");
-           } else {
-               mothersNameNode.put("FIRST_NAME", "");
-               mothersNameNode.put("MIDDLE_NAME", "");
-               mothersNameNode.put("LAST_NAME", "");
-           }
+            if (patient.getAttribute(4) != null) {
+                motherName = patient.getAttribute(4).getValue();
+                mothersNameNode.put("FIRST_NAME", motherName);
+                mothersNameNode.put("MIDDLE_NAME", "");
+                mothersNameNode.put("LAST_NAME", "");
+            } else {
+                mothersNameNode.put("FIRST_NAME", "");
+                mothersNameNode.put("MIDDLE_NAME", "");
+                mothersNameNode.put("LAST_NAME", "");
+            }
 
-       }
+        }
 
-       // check if it is mothers
-       Person mother = null;
-       // a_is_to_b = 'Parent' and b_is_to_a = 'Child'
-       for (Relationship relationship : parentChildRel) {
+        // check if it is mothers
+        Person mother = null;
+        // a_is_to_b = 'Parent' and b_is_to_a = 'Child'
+        for (Relationship relationship : parentChildRel) {
 
-           if (patient.equals(relationship.getPersonB())) {
-               if (relationship.getPersonA().getGender().equals("F")) {
-                   mother = relationship.getPersonA();
-                   break;
-               }
-           } else if (patient.equals(relationship.getPersonA())){
-               if (relationship.getPersonB().getGender().equals("F")) {
-                   mother = relationship.getPersonB();
-                   break;
-               }
-           }
-       }
-       if (mother != null) {
-           //get mother name
-           mothersNameNode.put("FIRST_NAME", mother.getGivenName());
-           mothersNameNode.put("MIDDLE_NAME", mother.getMiddleName());
-           mothersNameNode.put("LAST_NAME", mother.getFamilyName());
+            if (patient.equals(relationship.getPersonB())) {
+                if (relationship.getPersonA().getGender().equals("F")) {
+                    mother = relationship.getPersonA();
+                    break;
+                }
+            } else if (patient.equals(relationship.getPersonA())) {
+                if (relationship.getPersonB().getGender().equals("F")) {
+                    mother = relationship.getPersonB();
+                    break;
+                }
+            }
+        }
+        if (mother != null) {
+            //get mother name
+            mothersNameNode.put("FIRST_NAME", mother.getGivenName());
+            mothersNameNode.put("MIDDLE_NAME", mother.getMiddleName());
+            mothersNameNode.put("LAST_NAME", mother.getFamilyName());
 
-           // get identifiers
-           motherIdenfierNode = getMotherIdentifiers(patientService.getPatient(mother.getPersonId()));
+            // get identifiers
+            motherIdenfierNode = getMotherIdentifiers(patientService.getPatient(mother.getPersonId()));
+        }
 
-
-       }
-
-       motherDetails.put("MOTHER_NAME", mothersNameNode);
-       motherDetails.put("MOTHER_IDENTIFIER", motherIdenfierNode);
-
+        motherDetails.put("MOTHER_NAME", mothersNameNode);
+        motherDetails.put("MOTHER_IDENTIFIER", motherIdenfierNode);
 
         return motherDetails;
-   }
+    }
 
     protected RelationshipType getParentChildType() {
         return personService.getRelationshipTypeByUuid("8d91a210-c2cc-11de-8d13-0010c6dffd0f");
 
     }
-   private JSONPObject getPatientIdentifiers () {
-       return null;
-   }
 
-   private JSONPObject getNextOfKinDetails () {
-       return null;
-   }
+    private JSONPObject getPatientIdentifiers() {
+        return null;
+    }
 
-   private JSONPObject getHivTestDetails () {
-       return null;
-   }
+    private JSONPObject getNextOfKinDetails() {
+        return null;
+    }
 
-   private String getFacilityMFLForIdentifiers(Location location) {
-       return Utils.getDefaultLocationMflCode(location);
-   }
+    private JSONPObject getHivTestDetails() {
+        return null;
+    }
 
-   private JSONPObject getImmunizationDetails () {
-       return null;
-   }
+    private String getFacilityMFLForIdentifiers(Location location) {
+        return Utils.getDefaultLocationMflCode(location);
+    }
+
+    private JSONPObject getImmunizationDetails() {
+        return null;
+    }
 
     public int getPatientID() {
         return patientID;
@@ -594,7 +589,7 @@ public class OutgoingPatientSHR {
         this.patientIdentifier = patientIdentifier;
     }
 
-    private ObjectNode extractHivTestInformation (List<Obs> obsList) {
+    private ObjectNode extractHivTestInformation(List<Obs> obsList) {
         /**
          * "HIV_TEST": [
          {
@@ -612,13 +607,13 @@ public class OutgoingPatientSHR {
          */
 
         Integer finalHivTestResultConcept = 159427;
-        Integer	testTypeConcept = 162084;
+        Integer testTypeConcept = 162084;
         Integer testStrategyConcept = 164956;
         Integer testFacilityCodeConcept = 162724;
         Integer healthProviderConcept = 1473;
         Integer healthProviderIdentifierConcept = 163161;
 
-        Date testDate= obsList.get(0).getObsDatetime();
+        Date testDate = obsList.get(0).getObsDatetime();
         User provider = obsList.get(0).getCreator();
         String testResult = "";
         String testType = "";
@@ -626,21 +621,21 @@ public class OutgoingPatientSHR {
         String testFacility = null;
         ObjectNode testNode = getJsonNodeFactory().objectNode();
 
-        for(Obs obs:obsList) {
+        for (Obs obs : obsList) {
 
-            if(obs.getEncounter().getForm().getUuid().equals(HTS_CONFIRMATORY_TEST_FORM_UUID)) {
+            if (obs.getEncounter().getForm().getUuid().equals(HTS_CONFIRMATORY_TEST_FORM_UUID)) {
                 testType = "CONFIRMATORY";
             } else {
                 testType = "SCREENING";
             }
 
-            if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept) ) {
+            if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept)) {
                 testResult = hivStatusConverter(obs.getValueCoded());
             } /*else if (obs.getConcept().getConceptId().equals(testTypeConcept )) {
                 testType = testTypeConverter(obs.getValueCoded());
-            }*/ else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
+            }*/ else if (obs.getConcept().getConceptId().equals(testStrategyConcept)) {
                 testStrategy = testStrategyConverter(obs.getValueCoded());
-            } else if(obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
+            } else if (obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
                 testFacility = obs.getValueText();
             }
         }
@@ -655,7 +650,7 @@ public class OutgoingPatientSHR {
 
     }
 
-    String testStrategyConverter (Concept key) {
+    String testStrategyConverter(Concept key) {
         Map<Concept, String> hivTestStrategyList = new HashMap<Concept, String>();
         hivTestStrategyList.put(conceptService.getConcept(164163), "HP");
         hivTestStrategyList.put(conceptService.getConcept(164953), "NP");
@@ -668,11 +663,11 @@ public class OutgoingPatientSHR {
 
     /**
      * comparison with 1000 denote when a vaccine did not have sequence number documented as required
+     *
      * @param wrapper
      * @return node for a vaccine
-     *
      */
-    ObjectNode vaccineConverterNode (ImmunizationWrapper wrapper) {
+    ObjectNode vaccineConverterNode(ImmunizationWrapper wrapper) {
 
         Concept BCG = conceptService.getConcept(886);
         Concept OPV = conceptService.getConcept(783);
@@ -686,83 +681,83 @@ public class OutgoingPatientSHR {
 
         ObjectNode node = getJsonNodeFactory().objectNode();
         if (wrapper.getVaccine().equals(BCG)) {
-            node.put("NAME","BCG");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "BCG");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 0) {
-            node.put("NAME","OPV_AT_BIRTH");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "OPV_AT_BIRTH");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","OPV");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "OPV");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","OPV1");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "OPV1");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","OPV2");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "OPV2");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(OPV) && wrapper.getSequenceNumber() == 3) {
-            node.put("NAME","OPV3");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "OPV3");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(IPV) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","IPV");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "IPV");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(IPV) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","IPV");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "IPV");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","DPT/Hep_B/Hib");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "DPT/Hep_B/Hib");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","DPT/Hep_B/Hib_1");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "DPT/Hep_B/Hib_1");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","DPT/Hep_B/Hib_2");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "DPT/Hep_B/Hib_2");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(DPT) && wrapper.getSequenceNumber() == 3) {
-            node.put("NAME","DPT/Hep_B/Hib_3");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "DPT/Hep_B/Hib_3");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","PCV10");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "PCV10");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","PCV10-1");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "PCV10-1");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","PCV10-2");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "PCV10-2");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(PCV) && wrapper.getSequenceNumber() == 3) {
-            node.put("NAME","PCV10-3");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "PCV10-3");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","ROTA");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "ROTA");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","ROTA1");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "ROTA1");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(ROTA) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","ROTA2");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "ROTA2");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(MEASLES) && (wrapper.getSequenceNumber() == 1 || wrapper.getSequenceNumber() == 1000)) {
-            node.put("NAME","MEASLES6");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "MEASLES6");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 1000) {
-            node.put("NAME","MEASLES9");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "MEASLES9");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 1) {
-            node.put("NAME","MEASLES9");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "MEASLES9");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(MEASLESorRUBELLA) && wrapper.getSequenceNumber() == 2) {
-            node.put("NAME","MEASLES18");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "MEASLES18");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         } else if (wrapper.getVaccine().equals(YELLOW_FEVER) && (wrapper.getSequenceNumber() == 1 || wrapper.getSequenceNumber() == 1000)) {
-            node.put("NAME","YELLOW_FEVER");
-            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()) );
+            node.put("NAME", "YELLOW_FEVER");
+            node.put("DATE_ADMINISTERED", getSimpleDateFormat(getSHRDateFormat()).format(wrapper.getVaccineDate()));
         }
 
         return node;
     }
 
-    String testTypeConverter (Concept key) {
+    String testTypeConverter(Concept key) {
         Map<Concept, String> testTypeList = new HashMap<Concept, String>();
         testTypeList.put(conceptService.getConcept(162080), "SCREENING");
         testTypeList.put(conceptService.getConcept(162082), "CONFIRMATORY");
@@ -770,7 +765,7 @@ public class OutgoingPatientSHR {
 
     }
 
-    String hivStatusConverter (Concept key) {
+    String hivStatusConverter(Concept key) {
         Map<Concept, String> hivStatusList = new HashMap<Concept, String>();
         hivStatusList.put(conceptService.getConcept(703), "POSITIVE");
         hivStatusList.put(conceptService.getConcept(664), "NEGATIVE");
@@ -782,14 +777,15 @@ public class OutgoingPatientSHR {
 
         ObjectNode providerNameNode = getJsonNodeFactory().objectNode();
         providerNameNode.put("NAME", user.getPersonName().getFullName());
-        providerNameNode.put("ID", user.getSystemId());;
+        providerNameNode.put("ID", user.getSystemId());
+        ;
         return providerNameNode;
     }
 
     private ArrayNode extractImmunizationInformation() {
 
         Concept groupingConcept = conceptService.getConcept(1421);
-        Concept	vaccineConcept = conceptService.getConcept(984);
+        Concept vaccineConcept = conceptService.getConcept(984);
         Concept sequenceNumber = conceptService.getConcept(1418);
 
         ArrayNode immunizationNode = getJsonNodeFactory().arrayNode();
@@ -809,7 +805,7 @@ public class OutgoingPatientSHR {
 
         List<ImmunizationWrapper> immunizationList = new ArrayList<ImmunizationWrapper>();
         // extract blocks of vaccines organized by grouping concept
-        for(Encounter encounter : immunizationEncounters) {
+        for (Encounter encounter : immunizationEncounters) {
             List<Obs> obs = obsService.getObservations(
                     Arrays.asList(Context.getPersonService().getPerson(patient.getPersonId())),
                     Arrays.asList(encounter),
@@ -825,7 +821,7 @@ public class OutgoingPatientSHR {
                     false
             );
             // Iterate through groups
-            for(Obs group : obs) {
+            for (Obs group : obs) {
                 ImmunizationWrapper groupWrapper;
                 Concept vaccine = null;
                 Integer sequence = 1000;
@@ -833,19 +829,17 @@ public class OutgoingPatientSHR {
                 Set<Obs> members = group.getGroupMembers();
                 // iterate through obs for a particular group
                 for (Obs memberObs : members) {
-                    if (memberObs.getConcept().equals(vaccineConcept) ) {
+                    if (memberObs.getConcept().equals(vaccineConcept)) {
                         vaccine = memberObs.getValueCoded();
                     } else if (memberObs.getConcept().equals(sequenceNumber)) {
-                        sequence = memberObs.getValueNumeric() != null? memberObs.getValueNumeric().intValue() : 1000; // put 1000 for null
+                        sequence = memberObs.getValueNumeric() != null ? memberObs.getValueNumeric().intValue() : 1000; // put 1000 for null
                     }
                 }
                 immunizationList.add(new ImmunizationWrapper(vaccine, sequence, vaccineDate));
-
-
             }
         }
 
-        for(ImmunizationWrapper thisWrapper : immunizationList) {
+        for (ImmunizationWrapper thisWrapper : immunizationList) {
             immunizationNode.add(vaccineConverterNode(thisWrapper));
         }
         return immunizationNode;
