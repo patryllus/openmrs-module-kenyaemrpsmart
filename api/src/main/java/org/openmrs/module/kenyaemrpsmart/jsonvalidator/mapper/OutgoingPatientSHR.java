@@ -855,4 +855,8 @@ public class OutgoingPatientSHR {
         return psmartService.savePsmartStoreObject(psmartStore);
     }
 
+    public PsmartStore getRegistryEntry(String uuid) {
+        return psmartService.getPsmartStoreByUuid(uuid);
+    }
+
 }

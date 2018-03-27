@@ -18,7 +18,6 @@ public class PsmartStore extends BaseOpenmrsData {
     private Timestamp dateCreated;
     private String status;
     private Timestamp statusDate;
-    private String addendum;
 
     public PsmartStore() {
         prePersist();
@@ -77,14 +76,6 @@ public class PsmartStore extends BaseOpenmrsData {
         this.statusDate = statusDate;
     }
 
-    public String getAddendum() {
-        return addendum;
-    }
-
-    public void setAddendum(String addendum) {
-        this.addendum = addendum;
-    }
-
     public void prePersist(){
 
         if(null == getUuid())
@@ -100,7 +91,6 @@ public class PsmartStore extends BaseOpenmrsData {
                 ", dateCreated=" + dateCreated +
                 ", status='" + status + '\'' +
                 ", statusDate=" + statusDate +
-                ", addendum='" + addendum + '\'' +
                 '}';
     }
 }

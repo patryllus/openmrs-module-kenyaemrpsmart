@@ -181,36 +181,6 @@ public class PSMARTRestController extends BaseRestController {
 	}
 
 
-	@RequestMapping(method = RequestMethod.GET, value = "/testfacilitymfl")
-	@ResponseBody
-	public Object testFacilityMfl(HttpServletRequest request) {
-
-		return Utils.getDefaultLocationMflCode(Utils.getDefaultLocation());
-	}
-
-	@RequestMapping(method = RequestMethod.GET, value = "/getlocationfrommfl")
-	@ResponseBody
-	public Object getLocationFromFacilityMfl(HttpServletRequest request) {
-
-		return Utils.getLocationFromMFLCode("13608").getName();
-	}
-
-	@RequestMapping(method = RequestMethod.GET, value = "/testpsmartstore")
-	@ResponseBody
-	public Object testpsmartstore(HttpServletRequest request) {
-		PsmartStore test = new PsmartStore();
-		test.setDateCreated(new Date());
-		test.setShr("This is test SHR. I think this cannot work");
-		test.setAddendum("this is addendum");
-		test.setStatus("PENDING");
-		test.setStatusDate(new Timestamp(new Date().getTime()));
-		test.setDateCreated(new Timestamp(new Date().getTime()));
-		OutgoingPatientSHR obj = new OutgoingPatientSHR();
-		obj.saveRegistryEntry(test);
-
-		return null;
-	}
-
 	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
 	 */

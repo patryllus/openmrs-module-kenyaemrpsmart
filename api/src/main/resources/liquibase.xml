@@ -27,7 +27,6 @@
             <column name="date_created" type="datetime"></column>
             <column name="status" type="varchar(20)"></column>
             <column name="status_date" type="datetime"></column>
-            <column name="addendum" type="text"></column>
         </createTable>
     </changeSet>
     
