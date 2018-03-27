@@ -48,6 +48,11 @@ public class PSMARTRestController extends BaseRestController {
 
 	protected final Log log = LogFactory.getLog(getClass());
 
+	/**
+	 * gets SHR based on patient/client internal ID
+	 * @param request
+	 * @return
+	 */
 	@RequestMapping(method = RequestMethod.POST, value = "/getshr")
 	@ResponseBody
 	public Object receiveSHR(HttpServletRequest request) {
@@ -74,6 +79,11 @@ public class PSMARTRestController extends BaseRestController {
 		return new SimpleObject().add("identification", "No patient id specified in the request: Got this: => " + request.getParameter("patientID"));
 	}
 
+	/**
+	 * Processes SHR read from smart card
+	 * @param request
+	 * @return
+	 */
 	@RequestMapping(method = RequestMethod.POST, value = "/processshr")
 	@ResponseBody
 	public Object prepareSHR(HttpServletRequest request) {
@@ -90,6 +100,11 @@ public class PSMARTRestController extends BaseRestController {
 		return shr.processIncomingSHR();
 	}
 
+	/**
+	 * Return list of patients/clients to be issued with smart cards
+	 * @param request
+	 * @return
+	 */
 	@RequestMapping(method = RequestMethod.GET, value = "/getsmartcardeligiblelist")
 	@ResponseBody
 	public Object prepareEligibleList(HttpServletRequest request) {
@@ -97,6 +112,12 @@ public class PSMARTRestController extends BaseRestController {
 		return list.getEligibleList().toString();
 	}
 
+	/**
+	 * Generates P-Smart SHR based on psmart card serial number
+	 * @param request
+	 * @param cardSerialNo
+	 * @return
+	 */
 	@RequestMapping(method = RequestMethod.GET, value = "/getshrusingcardserial/{cardSerialNo}")
 	@ResponseBody
 	public Object getShrUsingCardSerial(HttpServletRequest request, @PathVariable("cardSerialNo") String cardSerialNo) {
@@ -107,6 +128,11 @@ public class PSMARTRestController extends BaseRestController {
 		return null;
 	}
 
+	/**
+	 * adds psmart card serial number as patient identifier
+	 * @param request
+	 * @return
+	 */
 	@RequestMapping(method = RequestMethod.POST, value = "/assigncardserialnumber")
 	@ResponseBody
 	public Object addSmartCardSerialToIdentifiers(HttpServletRequest request) {
@@ -132,23 +158,6 @@ public class PSMARTRestController extends BaseRestController {
 		return shr.assignCardSerialIdentifier(cardSerialNumber, null);
 	}
 
-	@RequestMapping(method = RequestMethod.POST, value = "/checkexistingclient")
-	@ResponseBody
-	public Object clientExists(HttpServletRequest request) {
-
-		Integer patientID=null;
-		String cardSerialNumber=null;
-		String requestBody = null;
-		MiddlewareRequest thisRequest = null;
-		try {
-			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
-		} catch (IOException e) {
-			return new SimpleObject().add("ServerResponse", "Error extracting request body");
-		}
-
-		IncomingPatientSHR shr = new IncomingPatientSHR(requestBody);
-		return shr.patientExists();
-	}
 
 	/**
 	 * Handle authentication
@@ -180,6 +189,41 @@ public class PSMARTRestController extends BaseRestController {
 		return PsmartAuthentication.authenticateUser(userName.trim(), pwd.trim()).toString();
 	}
 
+	/**
+	 * Saves addendumized SHR to psmart store
+	 * @param request
+	 * @return
+	 */
+	@RequestMapping(method = RequestMethod.POST, value = "/savetopsmart")
+	@ResponseBody
+	public Object saveToPsmart(HttpServletRequest request) {
+		String requestBody = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());
+		} catch (IOException e) {
+			return "Could not process request body";
+		}
+
+		if(requestBody != null) {
+			try {
+				PsmartStore entry = new PsmartStore();
+				entry.setDateCreated(new Date());
+				entry.setShr(requestBody);
+				entry.setStatus("PENDING");
+				entry.setStatusDate(new Timestamp(new Date().getTime()));
+				entry.setDateCreated(new Timestamp(new Date().getTime()));
+
+				OutgoingPatientSHR handler = new OutgoingPatientSHR();
+				handler.saveRegistryEntry(entry);
+				return "Card details successfully sent to EMR";
+			} catch (Exception e) {
+				return "There was an error writing card details in the EMR";
+			}
+		}
+
+		return "There was a problem sending encrypted data to the EMR";
+	}
+
 
 	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
@@ -188,147 +232,6 @@ public class PSMARTRestController extends BaseRestController {
 	@Override
 	public String getNamespace() {
 		return "v1/kenyaemrpsmart";
-	}
-
-	private String getIncomingSHRSample () {
-		return "{\n" +
-				"  \"VERSION\": \"1.0.0\",\n" +
-				"  \"PATIENT_IDENTIFICATION\": {\n" +
-				"    \"EXTERNAL_PATIENT_ID\": {\n" +
-				"      \"ID\": \"110ec58a-a0f2-4ac4-8393-c866d813b8d8\",\n" +
-				"      \"IDENTIFIER_TYPE\": \"GODS_NUMBER\",\n" +
-				"      \"ASSIGNING_AUTHORITY\": \"MPI\",\n" +
-				"      \"ASSIGNING_FACILITY\": \"10829\"\n" +
-				"    },\n" +
-				"    \"INTERNAL_PATIENT_ID\": [\n" +
-				"      {\n" +
-				"        \"ID\": \"12345678-ADFGHJY-0987654-NHYI898\",\n" +
-				"        \"IDENTIFIER_TYPE\": \"CARD_SERIAL_NUMBER\",\n" +
-				"        \"ASSIGNING_AUTHORITY\": \"CARD_REGISTRY\",\n" +
-				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
-				"      },\n" +
-				"      {\n" +
-				"        \"ID\": \"123456788\",\n" +
-				"        \"IDENTIFIER_TYPE\": \"HEI_NUMBER\",\n" +
-				"        \"ASSIGNING_AUTHORITY\": \"MCH\",\n" +
-				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
-				"      },\n" +
-				"      {\n" +
-				"        \"ID\": \"1234567808\",\n" +
-				"        \"IDENTIFIER_TYPE\": \"CCC_NUMBER\",\n" +
-				"        \"ASSIGNING_AUTHORITY\": \"CCC\",\n" +
-				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
-				"      },\n" +
-				"      {\n" +
-				"        \"ID\": \"00108\",\n" +
-				"        \"IDENTIFIER_TYPE\": \"HTS_NUMBER\",\n" +
-				"        \"ASSIGNING_AUTHORITY\": \"HTS\",\n" +
-				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
-				"      },\n" +
-				"      {\n" +
-				"        \"ID\": \"ABC56778\",\n" +
-				"        \"IDENTIFIER_TYPE\": \"ANC_NUMBER\",\n" +
-				"        \"ASSIGNING_AUTHORITY\": \"ANC\",\n" +
-				"        \"ASSIGNING_FACILITY\": \"10829\"\n" +
-				"      }\n" +
-				"    ],\n" +
-				"    \"PATIENT_NAME\": {\n" +
-				"      \"FIRST_NAME\": \"SERILA\",\n" +
-				"      \"MIDDLE_NAME\": \"SARAH\",\n" +
-				"      \"LAST_NAME\": \"SORROW\"\n" +
-				"    },\n" +
-				"    \"DATE_OF_BIRTH\": \"20111111\",\n" +
-				"    \"DATE_OF_BIRTH_PRECISION\": \"EXACT\",\n" +
-				"    \"SEX\": \"F\",\n" +
-				"    \"DEATH_DATE\": \"\",\n" +
-				"    \"DEATH_INDICATOR\": \"N\",\n" +
-				"    \"PATIENT_ADDRESS\": {\n" +
-				"      \"PHYSICAL_ADDRESS\": {\n" +
-				"        \"VILLAGE\": \"KWAKIMANI\",\n" +
-				"        \"WARD\": \"KIMANINI\",\n" +
-				"        \"SUB_COUNTY\": \"KIAMBU EAST\",\n" +
-				"        \"COUNTY\": \"KIAMBU\",\n" +
-				"        \"NEAREST_LANDMARK\": \"KIAMBU EAST\"\n" +
-				"      },\n" +
-				"      \"POSTAL_ADDRESS\": \"789 KIAMBU\"\n" +
-				"    },\n" +
-				"    \"PHONE_NUMBER\": \"254720278655\",\n" +
-				"    \"MARITAL_STATUS\": \"\",\n" +
-				"    \"MOTHER_DETAILS\": {\n" +
-				"      \"MOTHER_NAME\": {\n" +
-				"        \"FIRST_NAME\": \"WAMUYU\",\n" +
-				"        \"MIDDLE_NAME\": \"MARY\",\n" +
-				"        \"LAST_NAME\": \"WAITHERA\"\n" +
-				"      },\n" +
-				"      \"MOTHER_IDENTIFIER\": [\n" +
-				"        {\n" +
-				"          \"ID\": \"1234567\",\n" +
-				"          \"IDENTIFIER_TYPE\": \"NATIONAL_ID\",\n" +
-				"          \"ASSIGNING_AUTHORITY\": \"GOK\",\n" +
-				"          \"ASSIGNING_FACILITY\": \"\"\n" +
-				"        },\n" +
-				"        {\n" +
-				"          \"ID\": \"12345678\",\n" +
-				"          \"IDENTIFIER_TYPE\": \"NHIF\",\n" +
-				"          \"ASSIGNING_AUTHORITY\": \"NHIF\",\n" +
-				"          \"ASSIGNING_FACILITY\": \"\"\n" +
-				"        },\n" +
-				"        {\n" +
-				"          \"ID\": \"12345-67890\",\n" +
-				"          \"IDENTIFIER_TYPE\": \"CCC_NUMBER\",\n" +
-				"          \"ASSIGNING_AUTHORITY\": \"CCC\",\n" +
-				"          \"ASSIGNING_FACILITY\": \"10829\"\n" +
-				"        },\n" +
-				"        {\n" +
-				"          \"ID\": \"12345678\",\n" +
-				"          \"IDENTIFIER_TYPE\": \"PMTCT_NUMBER\",\n" +
-				"          \"ASSIGNING_AUTHORITY\": \"PMTCT\",\n" +
-				"          \"ASSIGNING_FACILITY\": \"10829\"\n" +
-				"        }\n" +
-				"      ]\n" +
-				"    }\n" +
-				"  },\n" +
-				"  \"NEXT_OF_KIN\": [\n" +
-				"    {\n" +
-				"      \"NOK_NAME\": {\n" +
-				"        \"FIRST_NAME\": \"WAIGURU\",\n" +
-				"        \"MIDDLE_NAME\": \"KIMUTAI\",\n" +
-				"        \"LAST_NAME\": \"WANJOKI\"\n" +
-				"      },\n" +
-				"      \"RELATIONSHIP\": \"**AS DEFINED IN GREENCARD\",\n" +
-				"      \"ADDRESS\": \"4678 KIAMBU\",\n" +
-				"      \"PHONE_NUMBER\": \"25489767899\",\n" +
-				"      \"SEX\": \"F\",\n" +
-				"      \"DATE_OF_BIRTH\": \"19871022\",\n" +
-				"      \"CONTACT_ROLE\": \"T\"\n" +
-				"    }\n" +
-				"  ],\n" +
-				"  \"HIV_TEST\": [\n" +
-				"    {\n" +
-				"      \"DATE\": \"20180101\",\n" +
-				"      \"RESULT\": \"POSITIVE\",\n" +
-				"      \"TYPE\": \"CONFIRMATORY\",\n" +
-				"      \"FACILITY\": \"10829\",\n" +
-				"      \"STRATEGY\": \"HP\",\n" +
-				"      \"PROVIDER_DETAILS\": {\n" +
-				"        \"NAME\": \"MATTHEW NJOROGE, MD\",\n" +
-				"        \"ID\": \"12345-67890-abcde\"\n" +
-				"      }\n" +
-				"    }\n" +
-				"  ],\n" +
-				"  \"IMMUNIZATION\": [\n" +
-				"    {\n" +
-				"      \"NAME\": \"OPV_AT_BIRTH\",\n" +
-				"      \"DATE_ADMINISTERED\": \"20180101\"\n" +
-				"    }\n" +
-				"  ],\n" +
-				"  \"CARD_DETAILS\": {\n" +
-				"    \"STATUS\": \"ACTIVE/INACTIVE\",\n" +
-				"    \"REASON\": \"LOST/DEATH/DAMAGED\",\n" +
-				"    \"LAST_UPDATED\": \"20180101\",\n" +
-				"    \"LAST_UPDATED_FACILITY\": \"10829\"\n" +
-				"  }\n" +
-				"}";
 	}
 
 }
