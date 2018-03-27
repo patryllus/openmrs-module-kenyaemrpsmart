@@ -1,5 +1,7 @@
 package org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.Attributable;
@@ -12,10 +14,13 @@ import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
+import org.openmrs.Person;
 import org.openmrs.PersonAddress;
 import org.openmrs.PersonAttribute;
 import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
+import org.openmrs.Relationship;
+import org.openmrs.RelationshipType;
 import org.openmrs.User;
 import org.openmrs.Visit;
 import org.openmrs.VisitType;
@@ -105,6 +110,7 @@ public class IncomingPatientSHR {
         savePersonAddresses();
         savePersonAttributes();
         addOtherPatientIdentifiers();
+        addNextOfKinDetails();
 
         try {
             patientService.savePatient(this.patient);
@@ -113,6 +119,7 @@ public class IncomingPatientSHR {
                 saveHivTestData();
                 try {
                     saveImmunizationData();
+                    saveMotherDetails();
                     return "Successfully processed P-Smart data";
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -255,6 +262,120 @@ public class IncomingPatientSHR {
         return null;
     }
 
+    public Patient checkIfMotherIsEnrolledInFacility() {
+
+        PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
+        PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
+        PatientIdentifierType NATIONAL_ID_TYPE = patientService.getPatientIdentifierTypeByUuid(NATIONAL_ID);
+        PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
+        PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
+        PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
+
+
+        for (int x = 0; x < SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mOTHER_DETAILS.mOTHER_IDENTIFIER.length; x++) {
+
+            String idType = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mOTHER_DETAILS.mOTHER_IDENTIFIER[x].iDENTIFIER_TYPE;
+            PatientIdentifierType identifierType = null;
+
+            String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mOTHER_DETAILS.mOTHER_IDENTIFIER[x].iD;
+
+            if (idType.equals("ANC_NUMBER")) {
+                // get patient with the identifier
+
+                List<Obs> obs = obsService.getObservations(
+                        null,
+                        null,
+                        Arrays.asList(conceptService.getConceptByUuid(ANC_NUMBER)),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false
+                );
+                for (Obs ancNo : obs) {
+                    if (ancNo.getValueText().equals(identifier.trim()))
+                        return (Patient) ancNo.getPerson();
+                }
+
+            } else {
+                if (idType.equals("GODS_NUMBER")) {
+                    identifierType = GODS_NUMBER_TYPE;
+                } else if (idType.equals("HEI_NUMBER")) {
+                    identifierType = HEI_NUMBER_TYPE;
+                } else if (idType.equals("CCC_NUMBER")) {
+                    identifierType = CCC_NUMBER_TYPE;
+                } else if (idType.equals("NATIONAL_ID")) {
+                    identifierType = NATIONAL_ID_TYPE;
+                } else if (idType.equals("CARD_SERIAL_NUMBER")) {
+                    identifierType = SMART_CARD_SERIAL_NUMBER_TYPE;
+                } else if (idType.equals("HTS_NUMBER")) {
+                    identifierType = HTS_NUMBER_TYPE;
+                }
+
+                if (identifierType != null && identifier != null) {
+                    List<Patient> patientsAlreadyAssigned = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
+                    if (patientsAlreadyAssigned.size() > 0) {
+                        return patientsAlreadyAssigned.get(0);
+                    }
+                }
+            }
+
+        }
+
+
+        return null;
+    }
+
+    private Person getClientMother() {
+
+        // get relationships
+        RelationshipType type = getParentChildType();
+        List<Relationship> parentChildRel = personService.getRelationships(null, patient, getParentChildType());
+
+        // check if it is mothers
+        Person mother = null;
+        // a_is_to_b = 'Parent' and b_is_to_a = 'Child'
+        for (Relationship relationship : parentChildRel) {
+
+            if (patient.equals(relationship.getPersonB())) {
+                if (relationship.getPersonA().getGender().equals("F")) {
+                    mother = relationship.getPersonA();
+                    break;
+                }
+            } else if (patient.equals(relationship.getPersonA())) {
+                if (relationship.getPersonB().getGender().equals("F")) {
+                    mother = relationship.getPersonB();
+                    break;
+                }
+            }
+        }
+        return mother;
+    }
+
+    protected RelationshipType getParentChildType() {
+        return personService.getRelationshipTypeByUuid("8d91a210-c2cc-11de-8d13-0010c6dffd0f");
+
+    }
+
+    private void saveMotherDetails() {
+        Patient motherFromSHR = checkIfMotherIsEnrolledInFacility();
+        Person motherFromFacilityDb = getClientMother();
+        if(motherFromSHR != null) {
+            if(motherFromFacilityDb == null) { // create relationship
+                Relationship rel = new Relationship();
+                rel.setRelationshipType(getParentChildType());
+                // a_is_to_b = 'Parent' and b_is_to_a = 'Child'
+                rel.setPersonA(motherFromSHR);
+                rel.setPersonB(patient);
+                personService.saveRelationship(rel);
+            }
+        }
+
+    }
     public boolean checkIfPatientHasIdentifier(Patient patient, PatientIdentifierType identifierType, String identifier) {
 
         List<Patient> patientsWithIdentifierList = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
@@ -922,63 +1043,87 @@ public class IncomingPatientSHR {
     /**
      * saves the first next of kin details. The system does not support multiple
      */
-    private void saveNextOfKinDetails() {
+    private void addNextOfKinDetails() {
 
         String NEXT_OF_KIN_ADDRESS = "7cf22bec-d90a-46ad-9f48-035952261294";
         String NEXT_OF_KIN_CONTACT = "342a1d39-c541-4b29-8818-930916f4c2dc";
         String NEXT_OF_KIN_NAME = "830bef6d-b01f-449d-9f8d-ac0fede8dbd3";
         String NEXT_OF_KIN_RELATIONSHIP = "d0aa9fd1-2ac5-45d8-9c5e-4317c622c8f5";
         Set<PersonAttribute> attributes = new TreeSet<PersonAttribute>();
+        Set<PersonAttribute> patientAttributes = new HashSet<PersonAttribute>();
         if (SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN != null && SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN.length > 0) {
             PersonAttributeType nextOfKinNameAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_NAME);
             PersonAttributeType nextOfKinAddressAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_ADDRESS);
             PersonAttributeType nextOfKinPhoneContactAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_CONTACT);
             PersonAttributeType nextOfKinRelationshipAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_RELATIONSHIP);
 
-            String nextOfKinName = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.fIRST_NAME.concat(
+            String nextOfKinName = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.fIRST_NAME.concat(" ").concat(
                     SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.mIDDLE_NAME != "" ? SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.mIDDLE_NAME : ""
-            ).concat(
+            ).concat(" ").concat(
                     SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.lAST_NAME != "" ? SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.lAST_NAME : ""
             );
+
+
 
             String nextOfKinAddress = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].aDDRESS;
             String nextOfKinPhoneContact = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].pHONE_NUMBER;
             String nextOfKinRelationship = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].rELATIONSHIP;
 
+            List<PatientIdentifier> idList = new ArrayList<PatientIdentifier>();
+
             if (nextOfKinName != null) {
                 PersonAttribute kinName = new PersonAttribute();
                 kinName.setAttributeType(nextOfKinNameAttrType);
                 kinName.setValue(nextOfKinName.trim());
-                attributes.add(kinName);
+                patientAttributes.add(kinName);
             }
 
             if (nextOfKinAddress != null) {
                 PersonAttribute kinAddress = new PersonAttribute();
                 kinAddress.setAttributeType(nextOfKinAddressAttrType);
                 kinAddress.setValue(nextOfKinAddress.trim());
-                attributes.add(kinAddress);
+                patientAttributes.add(kinAddress);
             }
 
             if (nextOfKinPhoneContact != null) {
                 PersonAttribute kinPhoneContact = new PersonAttribute();
                 kinPhoneContact.setAttributeType(nextOfKinPhoneContactAttrType);
                 kinPhoneContact.setValue(nextOfKinPhoneContact.trim());
-                attributes.add(kinPhoneContact);
+                patientAttributes.add(kinPhoneContact);
+
             }
 
             if (nextOfKinRelationship != null) {
                 PersonAttribute kinRelationship = new PersonAttribute();
                 kinRelationship.setAttributeType(nextOfKinRelationshipAttrType);
                 kinRelationship.setValue(nextOfKinRelationship.trim());
-                attributes.add(kinRelationship);
+                patientAttributes.add(kinRelationship);
             }
-            patient.setAttributes(attributes);
         }
 
+        for(PersonAttribute thisAttribute : patientAttributes) {
 
-    }
+            PersonAttribute attribute = new PersonAttribute(thisAttribute.getAttributeType(), thisAttribute.getValue());
 
-    private void saveMotherDetails() {
+            try {
+                Object hydratedObject = attribute.getHydratedObject();
+                if (hydratedObject == null || "".equals(hydratedObject.toString())) {
+                    // if null is returned, the value should be blanked out
+                    attribute.setValue("");
+                } else if (hydratedObject instanceof Attributable) {
+                    attribute.setValue(((Attributable) hydratedObject).serialize());
+                } else if (!hydratedObject.getClass().getName().equals(thisAttribute.getAttributeType().getFormat())) {
+                    // if the classes doesn't match the format, the hydration failed somehow
+                    // TODO change the PersonAttribute.getHydratedObject() to not swallow all errors?
+                    throw new APIException();
+                }
+            } catch (APIException e) {
+                //.warn("Got an invalid value: " + value + " while setting personAttributeType id #" + paramName, e);
+                // setting the value to empty so that the user can reset the value to something else
+                attribute.setValue("");
+            }
+            patient.addAttribute(attribute);
+        }
 
     }
 

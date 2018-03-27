@@ -15,6 +15,7 @@ import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.Person;
 import org.openmrs.PersonAddress;
+import org.openmrs.PersonAttribute;
 import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
 import org.openmrs.Relationship;
@@ -29,6 +30,7 @@ import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.kenyaemrpsmart.PsmartStore;
 import org.openmrs.module.kenyaemrpsmart.api.PsmartService;
+import org.openmrs.module.kenyaemrpsmart.jsonvalidator.utils.SHRUtils;
 import org.openmrs.module.kenyaemrpsmart.kenyaemrUtils.Utils;
 import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 
@@ -37,9 +39,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 public class OutgoingPatientSHR {
 
@@ -399,12 +403,36 @@ public class OutgoingPatientSHR {
             patientSHR.put("PATIENT_IDENTIFICATION", patientIdentificationNode);
             patientSHR.put("HIV_TEST", getHivTests());
             patientSHR.put("IMMUNIZATION", extractImmunizationInformation());
-            patientSHR.put("NEXT_OF_KIN", getJsonNodeFactory().arrayNode());
+            patientSHR.put("NEXT_OF_KIN", getNextOfKinDetails());
 
             return patientSHR;
         } else {
             return patientSHR;
         }
+    }
+
+    private ArrayNode getNextOfKinDetails() {
+
+        ArrayNode nextOfKinNode = getJsonNodeFactory().arrayNode();
+
+        /**
+         * TODO:
+         * Skipping this for now. Next of kin details are persisted differently in the EMR. Further discussions required
+        String NEXT_OF_KIN_ADDRESS = "7cf22bec-d90a-46ad-9f48-035952261294";
+        String NEXT_OF_KIN_CONTACT = "342a1d39-c541-4b29-8818-930916f4c2dc";
+        String NEXT_OF_KIN_NAME = "830bef6d-b01f-449d-9f8d-ac0fede8dbd3";
+        String NEXT_OF_KIN_RELATIONSHIP = "d0aa9fd1-2ac5-45d8-9c5e-4317c622c8f5";
+
+        PersonAttributeType nextOfKinNameAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_NAME);
+        PersonAttributeType nextOfKinAddressAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_ADDRESS);
+        PersonAttributeType nextOfKinPhoneContactAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_CONTACT);
+        PersonAttributeType nextOfKinRelationshipAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_RELATIONSHIP);
+
+        Set<PersonAttribute> existingAttributes = patient.getAttributes();*/
+
+
+        return nextOfKinNode;
+
     }
 
     public ArrayNode getMotherIdentifiers(Patient patient) {
@@ -554,10 +582,6 @@ public class OutgoingPatientSHR {
     }
 
     private JSONPObject getPatientIdentifiers() {
-        return null;
-    }
-
-    private JSONPObject getNextOfKinDetails() {
         return null;
     }
 
