@@ -643,14 +643,21 @@ public class OutgoingPatientSHR {
         String testType = "";
         String testStrategy = "";
         String testFacility = null;
+        String providerName = null;
+        String providerId = null;
+
         ObjectNode testNode = getJsonNodeFactory().objectNode();
 
         for (Obs obs : obsList) {
 
             if (obs.getEncounter().getForm().getUuid().equals(HTS_CONFIRMATORY_TEST_FORM_UUID)) {
                 testType = "CONFIRMATORY";
-            } else {
+            } else if (obs.getEncounter().getForm().getUuid().equals(HTS_INITIAL_TEST_FORM_UUID)) {
                 testType = "SCREENING";
+            }
+
+            if (obs.getConcept().getConceptId().equals(testTypeConcept)) {
+                testType = testTypeToStringConverter(obs.getValueCoded());
             }
 
             if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept)) {
@@ -661,6 +668,10 @@ public class OutgoingPatientSHR {
                 testStrategy = testStrategyConverter(obs.getValueCoded());
             } else if (obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
                 testFacility = obs.getValueText();
+            } else if (obs.getConcept().getConceptId().equals(healthProviderConcept)) {
+                providerName = obs.getValueText();
+            } else if (obs.getConcept().getConceptId().equals(healthProviderIdentifierConcept)) {
+                providerId = obs.getValueText();
             }
         }
         testNode.put("DATE", getSimpleDateFormat(getSHRDateFormat()).format(testDate));
@@ -668,12 +679,19 @@ public class OutgoingPatientSHR {
         testNode.put("TYPE", testType);
         testNode.put("STRATEGY", testStrategy);
         testNode.put("FACILITY", Utils.getDefaultLocationMflCode(Utils.getLocationFromMFLCode(testFacility)));
-        testNode.put("PROVIDER_DETAILS", getProviderDetails(provider));
+        testNode.put("PROVIDER_DETAILS", (providerName !=null && providerId != null) ?  getProviderDetails(null, providerName, providerId) :  getProviderDetails(provider, null, null));
 
         return testNode;
 
     }
 
+    String testTypeToStringConverter(Concept key) {
+        Map<Concept, String> testTypeList = new HashMap<Concept, String>();
+        testTypeList.put(conceptService.getConcept(162080), "SCREENING");
+        testTypeList.put(conceptService.getConcept(162082), "CONFIRMATORY");
+        return testTypeList.get(key);
+
+    }
     String testStrategyConverter(Concept key) {
         Map<Concept, String> hivTestStrategyList = new HashMap<Concept, String>();
         hivTestStrategyList.put(conceptService.getConcept(164163), "HP");
@@ -797,12 +815,20 @@ public class OutgoingPatientSHR {
         return hivStatusList.get(key);
     }
 
-    private ObjectNode getProviderDetails(User user) {
-
+    private ObjectNode getProviderDetails(User user, String username, String userId) {
         ObjectNode providerNameNode = getJsonNodeFactory().objectNode();
-        providerNameNode.put("NAME", user.getPersonName().getFullName());
-        providerNameNode.put("ID", user.getSystemId());
-        ;
+        if(user != null) {
+
+            providerNameNode.put("NAME", user.getPersonName().getFullName());
+            providerNameNode.put("ID", user.getSystemId());
+            return providerNameNode;
+        } else if(username != null && userId != null) {
+            providerNameNode.put("NAME", username);
+            providerNameNode.put("ID", userId);
+            return providerNameNode;
+        }
+        providerNameNode.put("NAME", "");
+        providerNameNode.put("ID", "");
         return providerNameNode;
     }
 

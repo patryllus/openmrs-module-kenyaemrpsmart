@@ -1,7 +1,5 @@
 package org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.Attributable;
@@ -432,7 +430,7 @@ public class IncomingPatientSHR {
 
         // extract GOD's Number
         String shrGodsNumber = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
-        if (shrGodsNumber != null) {
+        if (shrGodsNumber != null && !shrGodsNumber.isEmpty() && !"".equals(shrGodsNumber)) {
             if (!checkIfPatientHasIdentifier(this.patient, GODS_NUMBER_TYPE, shrGodsNumber.trim())) {
                 String godsNumberAssigningFacility = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.aSSIGNING_FACILITY;
                 PatientIdentifier godsNumber = new PatientIdentifier();
@@ -671,7 +669,8 @@ public class IncomingPatientSHR {
                     ex.printStackTrace();
                 }
                 // skip all tests done in the facility
-                if (Integer.valueOf(facility) == Integer.valueOf(Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()))) {//temp value for this facility
+                if (facility.trim().equals(Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()))) {//temp value for this facility
+                    System.out.println("Found tests for the facility. Skipping it");
                     continue;
                 }
 
