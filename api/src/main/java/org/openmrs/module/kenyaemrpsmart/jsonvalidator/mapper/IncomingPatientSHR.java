@@ -462,6 +462,9 @@ public class IncomingPatientSHR {
             PatientIdentifierType identifierType = null;
             String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iD;
 
+            if("".equals(identifier.trim()) || identifier.trim().isEmpty()) {
+                continue;
+            }
             if (idType.equals("ANC_NUMBER")) {
                 // first save patient
                /* patientService.savePatient(this.patient);
