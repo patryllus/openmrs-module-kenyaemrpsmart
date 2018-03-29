@@ -670,7 +670,6 @@ public class IncomingPatientSHR {
                 }
                 // skip all tests done in the facility
                 if (facility.trim().equals(Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()))) {//temp value for this facility
-                    System.out.println("Found tests for the facility. Skipping it");
                     continue;
                 }
 

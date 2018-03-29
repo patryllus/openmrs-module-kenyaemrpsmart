@@ -224,6 +224,52 @@ public class PSMARTRestController extends BaseRestController {
 		return "There was a problem sending encrypted data to the EMR";
 	}
 
+	@RequestMapping(method = RequestMethod.POST, value = "/getidentifiers")
+	@ResponseBody
+	public Object getAllPatientIdentifiers(HttpServletRequest request) {
+
+		Integer patientID=null;
+		String requestBody = null;
+		MiddlewareRequest thisRequest = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+		try {
+			thisRequest = new ObjectMapper().readValue(requestBody, MiddlewareRequest.class);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return new SimpleObject().add("ServerResponse", "Error reading patient id: " + requestBody);
+		}
+		patientID=Integer.parseInt(thisRequest.getPatientID());
+
+		return Utils.getPatientIdentifiers(patientID).toString();
+	}
+
+
+	@RequestMapping(method = RequestMethod.POST, value = "/getopenmrsid")
+	@ResponseBody
+	public Object getOpenMRSIdentifiers(HttpServletRequest request) {
+
+		Integer patientID=null;
+		String requestBody = null;
+		MiddlewareRequest thisRequest = null;
+		try {
+			requestBody = SHRUtils.fetchRequestBody(request.getReader());//request.getParameter("encryptedSHR") != null? request.getParameter("encryptedSHR"): null;
+		} catch (IOException e) {
+			return new SimpleObject().add("ServerResponse", "Error extracting request body");
+		}
+		try {
+			thisRequest = new ObjectMapper().readValue(requestBody, MiddlewareRequest.class);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return new SimpleObject().add("ServerResponse", "Error reading patient id: " + requestBody);
+		}
+		patientID=Integer.parseInt(thisRequest.getPatientID());
+
+		return Utils.getOpenMRSIdentifiers(patientID).toString();
+	}
 
 	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
