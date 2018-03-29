@@ -101,8 +101,10 @@ public class IncomingPatientSHR {
         Patient patient = checkIfPatientExists();
         if (patient != null) {
             this.patient = patient;
+            addOpenMRSIdentifier(true);
         } else {
             createOrUpdatePatient();
+            addOpenMRSIdentifier(false);
         }
 
         savePersonAddresses();
@@ -414,8 +416,8 @@ public class IncomingPatientSHR {
 
     }
 
-    private void addOpenMRSIdentifier() {
-        PatientIdentifier openMRSID = generateOpenMRSID();
+    private void addOpenMRSIdentifier(boolean patientExists) {
+        PatientIdentifier openMRSID = generateOpenMRSID(patientExists);
         patient.addIdentifier(openMRSID);
     }
 
@@ -443,14 +445,14 @@ public class IncomingPatientSHR {
         }
 
         // OpenMRS ID
-        PatientIdentifierType openmrsIDType = Context.getPatientService().getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
-        PatientIdentifier existingIdentifier = patient.getPatientIdentifier(openmrsIDType);
-
-        if (existingIdentifier != null) {
-
+/*        List<PatientIdentifier> openMRSIdentifiers = Utils.getOpenMRSIdentifiers(patient);
+        PatientIdentifier openMRSId = null;
+        if (openMRSIdentifiers != null && openMRSIdentifiers.size() > 0) {
+            openMRSId = openMRSIdentifiers.get(0);
         } else {
             addOpenMRSIdentifier();
-        }
+        }*/
+
 
         // process internal identifiers
 
@@ -1136,18 +1138,16 @@ public class IncomingPatientSHR {
     /**
      * Can't save patients unless they have required OpenMRS IDs
      */
-    private PatientIdentifier generateOpenMRSID() {
+    private PatientIdentifier generateOpenMRSID(boolean patientExists) {
         PatientIdentifierType openmrsIDType = Context.getPatientService().getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
         String generated = Context.getService(IdentifierSourceService.class).generateIdentifier(openmrsIDType, "Registration");
-        /*PatientIdentifier existingIdentifier = patient.getPatientIdentifier(openmrsIDType);
-        if(existingIdentifier != null) {
-            logger.info("Identifier exists");
-            System.out.println("Identifier exists");
-            return existingIdentifier;
-        }*/
+        if(patientExists) {
+            List<PatientIdentifier> existingIdentifier = Utils.getOpenMRSIdentifiers(patient);
+            if (existingIdentifier != null && existingIdentifier.size() > 0) {
+                return existingIdentifier.get(0);
+            }
+        }
         PatientIdentifier identifier = new PatientIdentifier(generated, openmrsIDType, Utils.getDefaultLocation());
-        logger.info("New identifier generated");
-        System.out.println("New identifier generated");
         return identifier;
     }
 

@@ -22,6 +22,7 @@ import org.openmrs.module.kenyaemrpsmart.jsonvalidator.mapper.SmartCardHivTest;
 import org.openmrs.module.kenyaemrpsmart.metadata.SmartCardMetadata;
 import org.openmrs.util.PrivilegeConstants;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -233,6 +234,33 @@ public class Utils {
         }
 
         return idsNode;
+    }
+
+    public static List<PatientIdentifier> getOpenMRSIdentifiers(Patient patient) {
+
+        PatientService patientService = Context.getPatientService();
+        PatientIdentifierType openmrsIDType = patientService.getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
+
+
+        List<PatientIdentifierType> allIdTypes = Arrays.asList(
+                openmrsIDType
+        );
+
+        List<PatientIdentifier> identifiers = new ArrayList<PatientIdentifier>();
+        if (patient != null) {
+
+            identifiers = Context.getPatientService().getPatientIdentifiers(
+                    null,
+                    allIdTypes,
+                    null,
+                    Arrays.asList(patient),
+                    null
+            );
+
+
+        }
+
+        return identifiers;
     }
 
 
