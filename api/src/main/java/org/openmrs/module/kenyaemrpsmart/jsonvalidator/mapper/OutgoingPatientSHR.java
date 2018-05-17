@@ -398,7 +398,7 @@ public class OutgoingPatientSHR {
             value.put("STATUS", "ACTIVE");
             value.put("REASON", "");
             value.put("LAST_UPDATED", getSimpleDateFormat(getSHRDateFormat()).format(new Date()));
-            value.put("LAST_UPDATED_FACILITY", Utils.getDefaultLocation().getLocationId());
+            value.put("LAST_UPDATED_FACILITY", Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()));
             patientSHR.put("CARD_DETAILS", value);
             patientSHR.put("PATIENT_IDENTIFICATION", patientIdentificationNode);
             patientSHR.put("HIV_TEST", getHivTests());
