@@ -63,7 +63,7 @@ public class PsmartServiceImpl extends BaseOpenmrsService implements PsmartServi
 
     @Override
     public PsmartStore getPsmartStoreByUuid(String uuid) {
-        return null;
+        return dao.getPsmartStoreByUuid(uuid);
     }
 
     @Override

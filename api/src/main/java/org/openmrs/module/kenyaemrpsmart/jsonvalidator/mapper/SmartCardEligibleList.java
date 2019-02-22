@@ -43,13 +43,11 @@ public class SmartCardEligibleList {
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
         int counter = 0;
         for(Encounter encounter: allEncounters) {
-            if(counter == 10) {
-                break;
-            }
+
             Patient patient = encounter.getPatient();
             List<PatientIdentifier> identifiers = patient.getPatientIdentifiers(SMART_CARD_SERIAL_NUMBER_TYPE);
             ObjectNode patientNode = getJsonNodeFactory().objectNode();
-            if(!patientList.contains(patient) && identifiers.size() == 0 && df.format(encounter.getEncounterDatetime()).equals(df.format(new Date())) && patient.getAge() < 15) {
+            if(!patientList.contains(patient) && identifiers.size() == 0 && patient.getAge() < 15) {
                 patientNode.put("PATIENTID", patient.getPatientId());
                 patientNode.put("FIRSTNAME", patient.getGivenName());
                 patientNode.put("MIDDLENAME", patient.getMiddleName());
@@ -64,8 +62,6 @@ public class SmartCardEligibleList {
 
 
         }
-        /*ObjectNode wrapper = getJsonNodeFactory().objectNode();
-        wrapper.put("ELIGIBLE_LIST", node);*/
         return node;
     }
 }

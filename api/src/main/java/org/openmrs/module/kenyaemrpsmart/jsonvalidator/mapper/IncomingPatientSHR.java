@@ -12,10 +12,13 @@ import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
+import org.openmrs.Person;
 import org.openmrs.PersonAddress;
 import org.openmrs.PersonAttribute;
 import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
+import org.openmrs.Relationship;
+import org.openmrs.RelationshipType;
 import org.openmrs.User;
 import org.openmrs.Visit;
 import org.openmrs.VisitType;
@@ -94,20 +97,20 @@ public class IncomingPatientSHR {
     }
 
     public String processIncomingSHR() {
-
-        //Patient existingPatient = checkIfPatientExists();
         String msg = "";
         Patient patient = checkIfPatientExists();
         if (patient != null) {
             this.patient = patient;
+            addOpenMRSIdentifier(true);
         } else {
             createOrUpdatePatient();
+            addOpenMRSIdentifier(false);
         }
 
         savePersonAddresses();
         savePersonAttributes();
         addOtherPatientIdentifiers();
-
+        addNextOfKinDetails();
 
         try {
             patientService.savePatient(this.patient);
@@ -116,6 +119,7 @@ public class IncomingPatientSHR {
                 saveHivTestData();
                 try {
                     saveImmunizationData();
+                    saveMotherDetails();
                     return "Successfully processed P-Smart data";
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -132,8 +136,6 @@ public class IncomingPatientSHR {
             e.printStackTrace();
             msg = "There was an error processing patient SHR";
         }
-
-        //}
 
         return msg;
     }
@@ -198,7 +200,7 @@ public class IncomingPatientSHR {
         PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
 
         String shrGodsNumber = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
-        if(shrGodsNumber != null && !shrGodsNumber.isEmpty()) {
+        if (shrGodsNumber != null && !shrGodsNumber.isEmpty()) {
             List<Patient> patientsAssignedGodsNumber = patientService.getPatients(null, shrGodsNumber.trim(), Arrays.asList(GODS_NUMBER_TYPE), false);
             if (patientsAssignedGodsNumber.size() > 0) {
                 return patientsAssignedGodsNumber.get(0);
@@ -246,7 +248,7 @@ public class IncomingPatientSHR {
                     identifierType = HTS_NUMBER_TYPE;
                 }
 
-                if(identifierType != null && identifier != null) {
+                if (identifierType != null && identifier != null) {
                     List<Patient> patientsAlreadyAssigned = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
                     if (patientsAlreadyAssigned.size() > 0) {
                         return patientsAlreadyAssigned.get(0);
@@ -260,6 +262,120 @@ public class IncomingPatientSHR {
         return null;
     }
 
+    public Patient checkIfMotherIsEnrolledInFacility() {
+
+        PatientIdentifierType HEI_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(HEI_UNIQUE_NUMBER);
+        PatientIdentifierType CCC_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
+        PatientIdentifierType NATIONAL_ID_TYPE = patientService.getPatientIdentifierTypeByUuid(NATIONAL_ID);
+        PatientIdentifierType SMART_CARD_SERIAL_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.SMART_CARD_SERIAL_NUMBER);
+        PatientIdentifierType HTS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.HTS_NUMBER);
+        PatientIdentifierType GODS_NUMBER_TYPE = patientService.getPatientIdentifierTypeByUuid(SmartCardMetadata._PatientIdentifierType.GODS_NUMBER);
+
+
+        for (int x = 0; x < SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mOTHER_DETAILS.mOTHER_IDENTIFIER.length; x++) {
+
+            String idType = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mOTHER_DETAILS.mOTHER_IDENTIFIER[x].iDENTIFIER_TYPE;
+            PatientIdentifierType identifierType = null;
+
+            String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.mOTHER_DETAILS.mOTHER_IDENTIFIER[x].iD;
+
+            if (idType.equals("ANC_NUMBER")) {
+                // get patient with the identifier
+
+                List<Obs> obs = obsService.getObservations(
+                        null,
+                        null,
+                        Arrays.asList(conceptService.getConceptByUuid(ANC_NUMBER)),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false
+                );
+                for (Obs ancNo : obs) {
+                    if (ancNo.getValueText().equals(identifier.trim()))
+                        return (Patient) ancNo.getPerson();
+                }
+
+            } else {
+                if (idType.equals("GODS_NUMBER")) {
+                    identifierType = GODS_NUMBER_TYPE;
+                } else if (idType.equals("HEI_NUMBER")) {
+                    identifierType = HEI_NUMBER_TYPE;
+                } else if (idType.equals("CCC_NUMBER")) {
+                    identifierType = CCC_NUMBER_TYPE;
+                } else if (idType.equals("NATIONAL_ID")) {
+                    identifierType = NATIONAL_ID_TYPE;
+                } else if (idType.equals("CARD_SERIAL_NUMBER")) {
+                    identifierType = SMART_CARD_SERIAL_NUMBER_TYPE;
+                } else if (idType.equals("HTS_NUMBER")) {
+                    identifierType = HTS_NUMBER_TYPE;
+                }
+
+                if (identifierType != null && identifier != null) {
+                    List<Patient> patientsAlreadyAssigned = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
+                    if (patientsAlreadyAssigned.size() > 0) {
+                        return patientsAlreadyAssigned.get(0);
+                    }
+                }
+            }
+
+        }
+
+
+        return null;
+    }
+
+    private Person getClientMother() {
+
+        // get relationships
+        RelationshipType type = getParentChildType();
+        List<Relationship> parentChildRel = personService.getRelationships(null, patient, getParentChildType());
+
+        // check if it is mothers
+        Person mother = null;
+        // a_is_to_b = 'Parent' and b_is_to_a = 'Child'
+        for (Relationship relationship : parentChildRel) {
+
+            if (patient.equals(relationship.getPersonB())) {
+                if (relationship.getPersonA().getGender().equals("F")) {
+                    mother = relationship.getPersonA();
+                    break;
+                }
+            } else if (patient.equals(relationship.getPersonA())) {
+                if (relationship.getPersonB().getGender().equals("F")) {
+                    mother = relationship.getPersonB();
+                    break;
+                }
+            }
+        }
+        return mother;
+    }
+
+    protected RelationshipType getParentChildType() {
+        return personService.getRelationshipTypeByUuid("8d91a210-c2cc-11de-8d13-0010c6dffd0f");
+
+    }
+
+    private void saveMotherDetails() {
+        Patient motherFromSHR = checkIfMotherIsEnrolledInFacility();
+        Person motherFromFacilityDb = getClientMother();
+        if(motherFromSHR != null) {
+            if(motherFromFacilityDb == null) { // create relationship
+                Relationship rel = new Relationship();
+                rel.setRelationshipType(getParentChildType());
+                // a_is_to_b = 'Parent' and b_is_to_a = 'Child'
+                rel.setPersonA(motherFromSHR);
+                rel.setPersonB(patient);
+                personService.saveRelationship(rel);
+            }
+        }
+
+    }
     public boolean checkIfPatientHasIdentifier(Patient patient, PatientIdentifierType identifierType, String identifier) {
 
         List<Patient> patientsWithIdentifierList = patientService.getPatients(null, identifier.trim(), Arrays.asList(identifierType), false);
@@ -300,8 +416,8 @@ public class IncomingPatientSHR {
 
     }
 
-    private void addOpenMRSIdentifier() {
-        PatientIdentifier openMRSID = generateOpenMRSID();
+    private void addOpenMRSIdentifier(boolean patientExists) {
+        PatientIdentifier openMRSID = generateOpenMRSID(patientExists);
         patient.addIdentifier(openMRSID);
     }
 
@@ -316,27 +432,27 @@ public class IncomingPatientSHR {
 
         // extract GOD's Number
         String shrGodsNumber = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.iD;
-        if (shrGodsNumber != null) {
-            if(!checkIfPatientHasIdentifier(this.patient, GODS_NUMBER_TYPE, shrGodsNumber.trim())) {
+        if (shrGodsNumber != null && !shrGodsNumber.isEmpty() && !"".equals(shrGodsNumber)) {
+            if (!checkIfPatientHasIdentifier(this.patient, GODS_NUMBER_TYPE, shrGodsNumber.trim())) {
                 String godsNumberAssigningFacility = SHRUtils.getSHR(incomingSHR).pATIENT_IDENTIFICATION.eXTERNAL_PATIENT_ID.aSSIGNING_FACILITY;
                 PatientIdentifier godsNumber = new PatientIdentifier();
                 godsNumber.setIdentifierType(GODS_NUMBER_TYPE);
                 godsNumber.setIdentifier(shrGodsNumber);
-                godsNumber.setLocation(Utils.getLocationFromMFLCode(godsNumberAssigningFacility) != null? Utils.getLocationFromMFLCode(godsNumberAssigningFacility) : Utils.getDefaultLocation());
+                godsNumber.setLocation(Utils.getLocationFromMFLCode(godsNumberAssigningFacility) != null ? Utils.getLocationFromMFLCode(godsNumberAssigningFacility) : Utils.getDefaultLocation());
                 patient.addIdentifier(godsNumber);
             }
 
         }
 
         // OpenMRS ID
-        PatientIdentifierType openmrsIDType = Context.getPatientService().getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
-        PatientIdentifier existingIdentifier = patient.getPatientIdentifier(openmrsIDType);
-
-        if(existingIdentifier != null) {
-
+/*        List<PatientIdentifier> openMRSIdentifiers = Utils.getOpenMRSIdentifiers(patient);
+        PatientIdentifier openMRSId = null;
+        if (openMRSIdentifiers != null && openMRSIdentifiers.size() > 0) {
+            openMRSId = openMRSIdentifiers.get(0);
         } else {
             addOpenMRSIdentifier();
-        }
+        }*/
+
 
         // process internal identifiers
 
@@ -346,6 +462,9 @@ public class IncomingPatientSHR {
             PatientIdentifierType identifierType = null;
             String identifier = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].iD;
 
+            if("".equals(identifier.trim()) || identifier.trim().isEmpty()) {
+                continue;
+            }
             if (idType.equals("ANC_NUMBER")) {
                 // first save patient
                /* patientService.savePatient(this.patient);
@@ -371,15 +490,14 @@ public class IncomingPatientSHR {
                     continue;
                 }
 
-                if(!checkIfPatientHasIdentifier(this.patient, identifierType, identifier)) {
+                if (!checkIfPatientHasIdentifier(this.patient, identifierType, identifier)) {
                     PatientIdentifier patientIdentifier = new PatientIdentifier();
                     String assigningFacility = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.iNTERNAL_PATIENT_ID[x].aSSIGNING_FACILITY;
                     patientIdentifier.setIdentifierType(identifierType);
                     patientIdentifier.setIdentifier(identifier);
                     patientIdentifier.setLocation(Utils.getDefaultLocation());
-                    patientIdentifier.setLocation(Utils.getLocationFromMFLCode(assigningFacility) != null? Utils.getLocationFromMFLCode(assigningFacility) : Utils.getDefaultLocation());
+                    patientIdentifier.setLocation(Utils.getLocationFromMFLCode(assigningFacility) != null ? Utils.getLocationFromMFLCode(assigningFacility) : Utils.getDefaultLocation());
 
-                    //identifierSet.add(patientIdentifier);
                     patient.addIdentifier(patientIdentifier);
 
                 }
@@ -415,7 +533,7 @@ public class IncomingPatientSHR {
 
     String testTypeToStringConverter(Concept key) {
         Map<Concept, String> testTypeList = new HashMap<Concept, String>();
-        testTypeList.put(conceptService.getConcept(162080),"SCREENING");
+        testTypeList.put(conceptService.getConcept(162080), "SCREENING");
         testTypeList.put(conceptService.getConcept(162082), "CONFIRMATORY");
         return testTypeList.get(key);
 
@@ -458,15 +576,13 @@ public class IncomingPatientSHR {
                     // TODO change the PersonAttribute.getHydratedObject() to not swallow all errors?
                     throw new APIException();
                 }
-            }
-            catch (APIException e) {
+            } catch (APIException e) {
                 //.warn("Got an invalid value: " + value + " while setting personAttributeType id #" + paramName, e);
                 // setting the value to empty so that the user can reset the value to something else
                 attribute.setValue("");
             }
             patient.addAttribute(attribute);
         }
-
     }
 
     private void savePersonAddresses() {
@@ -486,8 +602,7 @@ public class IncomingPatientSHR {
         String nEAREST_LANDMARK = SHRUtils.getSHR(this.incomingSHR).pATIENT_IDENTIFICATION.pATIENT_ADDRESS.pHYSICAL_ADDRESS.nEAREST_LANDMARK;
 
         Set<PersonAddress> patientAddress = patient.getAddresses();
-        //Set<PersonAddress> patientAddress = new TreeSet<PersonAddress>();
-        if(patientAddress.size() > 0) {
+        if (patientAddress.size() > 0) {
             for (PersonAddress address : patientAddress) {
                 if (cOUNTY != null) {
                     address.setCountry(cOUNTY);
@@ -531,19 +646,15 @@ public class IncomingPatientSHR {
             }
             patient.addAddress(pa);
         }
-
     }
 
-
     private void saveHivTestData() {
-
-
 
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
         Set<SmartCardHivTest> incomingTests = new HashSet<SmartCardHivTest>();
         Set<SmartCardHivTest> existingTests = new HashSet<SmartCardHivTest>(getHivTests());
 
-        if(SHRUtils.getSHR(this.incomingSHR).hIV_TEST != null) {
+        if (SHRUtils.getSHR(this.incomingSHR).hIV_TEST != null) {
             for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).hIV_TEST.length; i++) {
 
                 String dateStr = SHRUtils.getSHR(this.incomingSHR).hIV_TEST[i].dATE;
@@ -563,7 +674,7 @@ public class IncomingPatientSHR {
                     ex.printStackTrace();
                 }
                 // skip all tests done in the facility
-                if (Integer.valueOf(facility) == Integer.valueOf(Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()))) {//temp value for this facility
+                if (facility.trim().equals(Utils.getDefaultLocationMflCode(Utils.getDefaultLocation()))) {//temp value for this facility
                     continue;
                 }
 
@@ -577,17 +688,17 @@ public class IncomingPatientSHR {
             }
         }
         Iterator<SmartCardHivTest> ite = incomingTests.iterator();
-        while(ite.hasNext()) {
+        while (ite.hasNext()) {
             SmartCardHivTest value = ite.next();
-            for(SmartCardHivTest db : existingTests) {
-                if(db.equals(value)) {
+            for (SmartCardHivTest db : existingTests) {
+                if (db.equals(value)) {
                     ite.remove();
                     break;
                 }
             }
         }
 
-        for(SmartCardHivTest thisTest : incomingTests) {
+        for (SmartCardHivTest thisTest : incomingTests) {
 
             Encounter enc = new Encounter();
             Location location = Utils.getDefaultLocation();
@@ -685,11 +796,12 @@ public class IncomingPatientSHR {
         enc.addObs(o5);
         encounterService.saveEncounter(enc);
     }
+
     private void saveImmunizationData() {
         Set<ImmunizationWrapper> immunizationData = new HashSet<ImmunizationWrapper>(processImmunizationDataFromSHR());
         Set<ImmunizationWrapper> existingImmunizationData = new HashSet<ImmunizationWrapper>(getAllImmunizationDataFromDb());
 
-        if(immunizationData.size() > 0) {
+        if (immunizationData.size() > 0) {
             Iterator<ImmunizationWrapper> ite = immunizationData.iterator();
             while (ite.hasNext()) {
                 ImmunizationWrapper value = ite.next();
@@ -701,7 +813,7 @@ public class IncomingPatientSHR {
                 }
             }
         }
-        if(immunizationData.size() > 0) {
+        if (immunizationData.size() > 0) {
             saveImmunizationData(immunizationData);
         }
     }
@@ -794,7 +906,7 @@ public class IncomingPatientSHR {
     private List<ImmunizationWrapper> getAllImmunizationDataFromDb() {
 
         Concept groupingConcept = conceptService.getConcept(1421);
-        Concept	vaccineConcept = conceptService.getConcept(984);
+        Concept vaccineConcept = conceptService.getConcept(984);
         Concept sequenceNumber = conceptService.getConcept(1418);
         Form pSmartImmunizationForm = Context.getFormService().getFormByUuid(SmartCardMetadata._Form.PSMART_IMMUNIZATION);
 
@@ -815,7 +927,7 @@ public class IncomingPatientSHR {
 
         List<ImmunizationWrapper> immunizationList = new ArrayList<ImmunizationWrapper>();
         // extract blocks of vaccines organized by grouping concept
-        for(Encounter encounter : immunizationEncounters) {
+        for (Encounter encounter : immunizationEncounters) {
             List<Obs> obs = obsService.getObservations(
                     Arrays.asList(Context.getPersonService().getPerson(patient.getPersonId())),
                     Arrays.asList(encounter),
@@ -831,7 +943,7 @@ public class IncomingPatientSHR {
                     false
             );
             // Iterate through groups
-            for(Obs group : obs) {
+            for (Obs group : obs) {
                 ImmunizationWrapper groupWrapper;
                 Concept vaccine = null;
                 Integer sequence = null;
@@ -839,10 +951,10 @@ public class IncomingPatientSHR {
                 Set<Obs> members = group.getGroupMembers();
                 // iterate through obs for a particular group
                 for (Obs memberObs : members) {
-                    if (memberObs.getConcept().equals(vaccineConcept) ) {
+                    if (memberObs.getConcept().equals(vaccineConcept)) {
                         vaccine = memberObs.getValueCoded();
                     } else if (memberObs.getConcept().equals(sequenceNumber)) {
-                        sequence = memberObs.getValueNumeric() != null? memberObs.getValueNumeric().intValue() : sequence;
+                        sequence = memberObs.getValueNumeric() != null ? memberObs.getValueNumeric().intValue() : sequence;
                     }
                 }
                 immunizationList.add(new ImmunizationWrapper(vaccine, sequence, vaccineDate));
@@ -868,7 +980,7 @@ public class IncomingPatientSHR {
         Concept YELLOW_FEVER = conceptService.getConcept(5864);
 
         List<ImmunizationWrapper> shrData = new ArrayList<ImmunizationWrapper>();
-        if(SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION != null) {
+        if (SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION != null) {
             for (int i = 0; i < SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION.length; i++) {
 
                 String name = SHRUtils.getSHR(this.incomingSHR).iMMUNIZATION[i].nAME;
@@ -934,63 +1046,87 @@ public class IncomingPatientSHR {
     /**
      * saves the first next of kin details. The system does not support multiple
      */
-    private void saveNextOfKinDetails() {
+    private void addNextOfKinDetails() {
 
         String NEXT_OF_KIN_ADDRESS = "7cf22bec-d90a-46ad-9f48-035952261294";
         String NEXT_OF_KIN_CONTACT = "342a1d39-c541-4b29-8818-930916f4c2dc";
         String NEXT_OF_KIN_NAME = "830bef6d-b01f-449d-9f8d-ac0fede8dbd3";
         String NEXT_OF_KIN_RELATIONSHIP = "d0aa9fd1-2ac5-45d8-9c5e-4317c622c8f5";
         Set<PersonAttribute> attributes = new TreeSet<PersonAttribute>();
+        Set<PersonAttribute> patientAttributes = new HashSet<PersonAttribute>();
         if (SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN != null && SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN.length > 0) {
             PersonAttributeType nextOfKinNameAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_NAME);
             PersonAttributeType nextOfKinAddressAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_ADDRESS);
             PersonAttributeType nextOfKinPhoneContactAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_CONTACT);
             PersonAttributeType nextOfKinRelationshipAttrType = personService.getPersonAttributeTypeByUuid(NEXT_OF_KIN_RELATIONSHIP);
 
-            String nextOfKinName = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.fIRST_NAME.concat(
+            String nextOfKinName = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.fIRST_NAME.concat(" ").concat(
                     SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.mIDDLE_NAME != "" ? SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.mIDDLE_NAME : ""
-            ).concat(
+            ).concat(" ").concat(
                     SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.lAST_NAME != "" ? SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].nOK_NAME.lAST_NAME : ""
             );
+
+
 
             String nextOfKinAddress = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].aDDRESS;
             String nextOfKinPhoneContact = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].pHONE_NUMBER;
             String nextOfKinRelationship = SHRUtils.getSHR(this.incomingSHR).nEXT_OF_KIN[0].rELATIONSHIP;
 
+            List<PatientIdentifier> idList = new ArrayList<PatientIdentifier>();
+
             if (nextOfKinName != null) {
                 PersonAttribute kinName = new PersonAttribute();
                 kinName.setAttributeType(nextOfKinNameAttrType);
                 kinName.setValue(nextOfKinName.trim());
-                attributes.add(kinName);
+                patientAttributes.add(kinName);
             }
 
             if (nextOfKinAddress != null) {
                 PersonAttribute kinAddress = new PersonAttribute();
                 kinAddress.setAttributeType(nextOfKinAddressAttrType);
                 kinAddress.setValue(nextOfKinAddress.trim());
-                attributes.add(kinAddress);
+                patientAttributes.add(kinAddress);
             }
 
             if (nextOfKinPhoneContact != null) {
                 PersonAttribute kinPhoneContact = new PersonAttribute();
                 kinPhoneContact.setAttributeType(nextOfKinPhoneContactAttrType);
                 kinPhoneContact.setValue(nextOfKinPhoneContact.trim());
-                attributes.add(kinPhoneContact);
+                patientAttributes.add(kinPhoneContact);
+
             }
 
             if (nextOfKinRelationship != null) {
                 PersonAttribute kinRelationship = new PersonAttribute();
                 kinRelationship.setAttributeType(nextOfKinRelationshipAttrType);
                 kinRelationship.setValue(nextOfKinRelationship.trim());
-                attributes.add(kinRelationship);
+                patientAttributes.add(kinRelationship);
             }
-            patient.setAttributes(attributes);
         }
 
+        for(PersonAttribute thisAttribute : patientAttributes) {
 
-    }
+            PersonAttribute attribute = new PersonAttribute(thisAttribute.getAttributeType(), thisAttribute.getValue());
 
-    private void saveMotherDetails() {
+            try {
+                Object hydratedObject = attribute.getHydratedObject();
+                if (hydratedObject == null || "".equals(hydratedObject.toString())) {
+                    // if null is returned, the value should be blanked out
+                    attribute.setValue("");
+                } else if (hydratedObject instanceof Attributable) {
+                    attribute.setValue(((Attributable) hydratedObject).serialize());
+                } else if (!hydratedObject.getClass().getName().equals(thisAttribute.getAttributeType().getFormat())) {
+                    // if the classes doesn't match the format, the hydration failed somehow
+                    // TODO change the PersonAttribute.getHydratedObject() to not swallow all errors?
+                    throw new APIException();
+                }
+            } catch (APIException e) {
+                //.warn("Got an invalid value: " + value + " while setting personAttributeType id #" + paramName, e);
+                // setting the value to empty so that the user can reset the value to something else
+                attribute.setValue("");
+            }
+            patient.addAttribute(attribute);
+        }
 
     }
 
@@ -1005,18 +1141,16 @@ public class IncomingPatientSHR {
     /**
      * Can't save patients unless they have required OpenMRS IDs
      */
-    private PatientIdentifier generateOpenMRSID() {
+    private PatientIdentifier generateOpenMRSID(boolean patientExists) {
         PatientIdentifierType openmrsIDType = Context.getPatientService().getPatientIdentifierTypeByUuid("dfacd928-0370-4315-99d7-6ec1c9f7ae76");
         String generated = Context.getService(IdentifierSourceService.class).generateIdentifier(openmrsIDType, "Registration");
-        /*PatientIdentifier existingIdentifier = patient.getPatientIdentifier(openmrsIDType);
-        if(existingIdentifier != null) {
-            logger.info("Identifier exists");
-            System.out.println("Identifier exists");
-            return existingIdentifier;
-        }*/
+        if(patientExists) {
+            List<PatientIdentifier> existingIdentifier = Utils.getOpenMRSIdentifiers(patient);
+            if (existingIdentifier != null && existingIdentifier.size() > 0) {
+                return existingIdentifier.get(0);
+            }
+        }
         PatientIdentifier identifier = new PatientIdentifier(generated, openmrsIDType, Utils.getDefaultLocation());
-        logger.info("New identifier generated");
-        System.out.println("New identifier generated");
         return identifier;
     }
 
@@ -1024,12 +1158,11 @@ public class IncomingPatientSHR {
 
         // test concepts
         Concept finalHivTestResultConcept = conceptService.getConcept(159427);
-        Concept	testTypeConcept = conceptService.getConcept(162084);
+        Concept testTypeConcept = conceptService.getConcept(162084);
         Concept testStrategyConcept = conceptService.getConcept(164956);
         Concept testFacilityCodeConcept = conceptService.getConcept(162724);
         Concept healthProviderConcept = conceptService.getConcept(1473);
         Concept healthProviderIdentifierConcept = conceptService.getConcept(163161);
-
 
 
         Form HTS_INITIAL_FORM = Context.getFormService().getFormByUuid(HTS_INITIAL_TEST_FORM_UUID);
@@ -1044,13 +1177,13 @@ public class IncomingPatientSHR {
 
         List<SmartCardHivTest> testList = new ArrayList<SmartCardHivTest>();
         // loop through encounters and extract hiv test information
-        for(Encounter encounter : htsEncounters) {
+        for (Encounter encounter : htsEncounters) {
             List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept));
             testList.add(extractHivTestInformation(obs));
         }
 
         // append processed tests from card
-        for(Encounter encounter : processedIncomingTests) {
+        for (Encounter encounter : processedIncomingTests) {
             List<Obs> obs = Utils.getEncounterObservationsForQuestions(patient, encounter, Arrays.asList(finalHivTestResultConcept, testTypeConcept, testStrategyConcept, testFacilityCodeConcept, healthProviderConcept, healthProviderIdentifierConcept));
             testList.add(extractHivTestInformation(obs));
         }
@@ -1058,16 +1191,16 @@ public class IncomingPatientSHR {
         return testList;
     }
 
-    private SmartCardHivTest extractHivTestInformation (List<Obs> obsList) {
+    private SmartCardHivTest extractHivTestInformation(List<Obs> obsList) {
 
         Integer finalHivTestResultConcept = 159427;
-        Integer	testTypeConcept = 162084;
+        Integer testTypeConcept = 162084;
         Integer testStrategyConcept = 164956;
         Integer testFacilityCodeConcept = 162724;
         Integer healthProviderConcept = 1473;
         Integer healthProviderIdentifierConcept = 163161;
 
-        Date testDate= obsList.get(0).getObsDatetime();
+        Date testDate = obsList.get(0).getObsDatetime();
         User provider = obsList.get(0).getCreator();
         Concept testResult = null;
         String testType = null;
@@ -1076,11 +1209,11 @@ public class IncomingPatientSHR {
         String providerName = null;
         String providerId = null;
 
-        for(Obs obs:obsList) {
+        for (Obs obs : obsList) {
 
-            if(obs.getEncounter().getForm().getUuid().equals(HTS_CONFIRMATORY_TEST_FORM_UUID)) {
+            if (obs.getEncounter().getForm().getUuid().equals(HTS_CONFIRMATORY_TEST_FORM_UUID)) {
                 testType = "CONFIRMATORY";
-            } else if(obs.getEncounter().getForm().getUuid().equals(HTS_INITIAL_TEST_FORM_UUID)) {
+            } else if (obs.getEncounter().getForm().getUuid().equals(HTS_INITIAL_TEST_FORM_UUID)) {
                 testType = "SCREENING";
             }
 
@@ -1088,15 +1221,15 @@ public class IncomingPatientSHR {
                 testType = testTypeToStringConverter(obs.getValueCoded());
             }
 
-            if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept) ) {
+            if (obs.getConcept().getConceptId().equals(finalHivTestResultConcept)) {
                 testResult = obs.getValueCoded();
-            } else if (obs.getConcept().getConceptId().equals(testStrategyConcept) ) {
+            } else if (obs.getConcept().getConceptId().equals(testStrategyConcept)) {
                 testStrategy = obs.getValueCoded();
-            } else if(obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
+            } else if (obs.getConcept().getConceptId().equals(testFacilityCodeConcept)) {
                 testFacility = obs.getValueText();
-            } else if (obs.getConcept().getConceptId().equals(healthProviderConcept) ) {
+            } else if (obs.getConcept().getConceptId().equals(healthProviderConcept)) {
                 providerName = obs.getValueText();
-            } else if(obs.getConcept().getConceptId().equals(healthProviderIdentifierConcept)) {
+            } else if (obs.getConcept().getConceptId().equals(healthProviderIdentifierConcept)) {
                 providerId = obs.getValueText();
             }
         }

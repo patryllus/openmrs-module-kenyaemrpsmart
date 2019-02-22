@@ -42,7 +42,7 @@ import java.util.Set;
  * Controller class for cohort import page
  */
 //@SharedPage({"kenyaemr.registration", "kenyaemr.intake", "kenyaemr.medicalEncounter"})
-@AppPage("kenyaemrpsmart.home")
+
 public class KenyaemrpsmarthomePageController {
 
     protected static final Log log = LogFactory.getLog(KenyaemrpsmarthomePageController.class);
