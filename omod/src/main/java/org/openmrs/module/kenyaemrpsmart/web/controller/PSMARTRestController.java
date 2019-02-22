@@ -272,6 +272,23 @@ public class PSMARTRestController extends BaseRestController {
 	}
 
 	/**
+	 * Generates KenyaEMR related metrics
+	 * @param request
+	 * @return
+	 */
+	@RequestMapping(method = RequestMethod.GET, value = "/getemrmetrics")
+	@ResponseBody
+	public Object getKenyaEMRDetails(HttpServletRequest request) {
+
+		return "{\n" +
+				"    \"EmrName\":\"KenyaEMR\",\n" +
+				"    \"EmrVersion\":\"17.0.0\",\n" +
+				"    \"LastLoginDate\":\"\",\n" +
+				"    \"LastMoH731RunDate\":\"\"\n" +
+				"}";
+	}
+
+	/**
 	 * @see org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController#getNamespace()
 	 */
 
